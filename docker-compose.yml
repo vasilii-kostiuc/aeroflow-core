@@ -1,5 +1,5 @@
 services:
-  app:
+  aeroflow_core_app:
     build:
       context: .
       dockerfile: _docker/Dockerfile
@@ -9,14 +9,14 @@ services:
       - /var/www/vendor
     environment:
       APP_ENV: dev
-      DATABASE_URL: postgresql://aeroflow:aeroflow@postgres:5432/aeroflow?serverVersion=16&charset=utf8
+      DATABASE_URL: postgresql://aeroflow:aeroflow@aeroflow_core_postgres:5432/aeroflow?serverVersion=16&charset=utf8
     depends_on:
-      postgres:
+      aeroflow_core_postgres:
         condition: service_healthy
     networks:
       - aeroflow
 
-  nginx:
+  aeroflow_core_nginx:
     image: nginx:1.27-alpine
     container_name: aeroflow_core_nginx
     ports:
@@ -25,11 +25,11 @@ services:
       - .:/var/www
       - ./_docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
-      - app
+      - aeroflow_core_app
     networks:
       - aeroflow
 
-  postgres:
+  aeroflow_core_postgres:
     image: postgres:16-alpine
     container_name: aeroflow_core_postgres
     environment:

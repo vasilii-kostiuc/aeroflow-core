@@ -3,6 +3,7 @@
 namespace App\UserAccess\Domain\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
+use App\UserAccess\Domain\Event\UserRegistered;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Uid\Uuid;
@@ -10,7 +11,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Entity]
 #[ORM\Table(name: '`user`')]
 #[ORM\UniqueConstraint(name: 'UNIQ_IDENTIFIER_EMAIL', fields: ['email'])]
-class User implements UserInterface, PasswordAuthenticatedUserInterface
+class User extends \App\Shared\Domain\AggregateRoot implements UserInterface, PasswordAuthenticatedUserInterface
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -104,5 +105,23 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $data["\0".self::class."\0password"] = hash('crc32c', $this->password);
 
         return $data;
+    }
+
+    public static function register(string $email, string $password): self
+    {
+        $user = new self();
+        $user->email = $email;
+        $user->password = $password;
+        
+        $user->recordEvent(new UserRegistered($user->id, $user->email));
+
+        return $user;
+    }
+
+    public function assignRole(string $role): void
+    {
+        if (!in_array($role, $this->roles, true)) {
+            $this->roles[] = $role;
+        }
     }
 }

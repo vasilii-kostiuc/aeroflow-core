@@ -6,14 +6,15 @@ use App\Shared\Api\Response\ApiResponse;
 use App\UserAccess\Api\Request\RegisterUserRequest;
 use App\UserAccess\Application\RegisterUser\RegisterUserCommand;
 use App\UserAccess\Application\RegisterUser\RegisterUserResponse;
+use App\UserAccess\Domain\Entity\User;
+use Nelmio\ApiDocBundle\Attribute\Model;
+use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
-use Symfony\Component\Routing\Attribute\Route;
-use App\UserAccess\Domain\Entity\User;
-use Symfony\Component\Messenger\Attribute\HandledStamp;
 use Symfony\Component\Messenger\MessageBusInterface;
-
+use Symfony\Component\Messenger\Stamp\HandledStamp;
+use Symfony\Component\Routing\Attribute\Route;
 
 final class RegistrationController extends AbstractController
 {
@@ -22,23 +23,63 @@ final class RegistrationController extends AbstractController
     ) {
     }
 
+    #[OA\Post(
+        summary: 'Register a user',
+        tags: ['User access'],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ['email', 'password', 'passwordConfirmation'],
+                properties: [
+                    new OA\Property(property: 'email', type: 'string', format: 'email', example: 'dispatcher@example.com'),
+                    new OA\Property(property: 'password', type: 'string', format: 'password', minLength: 8, example: 'password123'),
+                    new OA\Property(property: 'passwordConfirmation', type: 'string', format: 'password', example: 'password123'),
+                ],
+                type: 'object',
+            ),
+        ),
+        responses: [
+            new OA\Response(
+                response: 201,
+                description: 'User registered successfully',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'success', type: 'boolean', example: true),
+                        new OA\Property(
+                            property: 'data',
+                            ref: new Model(type: RegisterUserResponse::class),
+                        ),
+                        new OA\Property(property: 'message', type: 'string', example: 'User registered successfully'),
+                        new OA\Property(
+                            property: 'errors',
+                            type: 'array',
+                            items: new OA\Items(type: 'string'),
+                            example: [],
+                        ),
+                    ],
+                    type: 'object',
+                ),
+            ),
+            new OA\Response(response: 422, description: 'Validation or domain error'),
+        ],
+    )]
     #[Route('/register', name: 'app_register', methods: ['POST'])]
     public function index(#[MapRequestPayload] RegisterUserRequest $registerUserRequest): JsonResponse
     {
         $envelope = $this->messageBus->dispatch(new RegisterUserCommand(
-        email: $registerUserRequest->email,
-        password: $registerUserRequest->password,
-    ));
+            email: $registerUserRequest->email,
+            password: $registerUserRequest->password,
+        ));
 
-    /** @var User $user */
-    $user = $envelope->last(HandledStamp::class)?->getResult();
+        /** @var User $user */
+        $user = $envelope->last(HandledStamp::class)?->getResult();
 
-    return ApiResponse::created(
-        message: 'User registered successfully',
-        data: new RegisterUserResponse(
-            id: $user->getId(),
-            email: $user->getEmail(),
-        ),
-    );
+        return ApiResponse::created(
+            message: 'User registered successfully',
+            data: new RegisterUserResponse(
+                id: (string) $user->getId(),
+                email: $user->getEmail(),
+            ),
+        );
     }
 }

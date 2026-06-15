@@ -4,6 +4,7 @@ namespace App\UserAccess\Domain\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
 use App\UserAccess\Domain\Event\UserRegistered;
+use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Uid\Uuid;
@@ -14,8 +15,9 @@ use Symfony\Component\Uid\Uuid;
 class User extends \App\Shared\Domain\AggregateRoot implements UserInterface, PasswordAuthenticatedUserInterface
 {
     #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column]
+    #[ORM\Column(type: UuidType::NAME, unique: true)]
+    #[ORM\GeneratedValue(strategy: 'CUSTOM')]
+    #[ORM\CustomIdGenerator(class: 'doctrine.uuid_generator')]
     private ?Uuid $id = null;
 
     #[ORM\Column(length: 180)]

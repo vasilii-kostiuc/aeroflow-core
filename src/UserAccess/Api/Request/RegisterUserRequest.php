@@ -2,6 +2,7 @@
 
 namespace App\UserAccess\Api\Request;
 
+use Nelmio\ApiDocBundle\Attribute\Ignore;
 use Symfony\Component\Validator\Constraints as Assert;
 
 final readonly class RegisterUserRequest
@@ -20,6 +21,7 @@ final readonly class RegisterUserRequest
     ) {
     }
 
+    #[Ignore]
     #[Assert\IsTrue(message: 'Passwords do not match')]
     public function isPasswordConfirmed(): bool
     {

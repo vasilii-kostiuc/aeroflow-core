@@ -12,7 +12,7 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Component\Validator\Exception\ValidationFailedException;
 
-#[AsEventListener(event: KernelEvents::EXCEPTION)]
+//#[AsEventListener(event: KernelEvents::EXCEPTION)]
 final class ApiExceptionListener
 {
     public function __construct(

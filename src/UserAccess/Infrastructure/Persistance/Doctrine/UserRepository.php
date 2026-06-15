@@ -17,9 +17,10 @@ final class UserRepository implements UserRepositoryInterface
     public function save(User $user): void
     {
         $this->em->persist($user);
+        $this->em->flush();
     }
 
-    function findBuId(Uuid $id): ?User
+    public function findById(Uuid $id): ?User
     {
         return $this->em->find(User::class, $id);
     }
@@ -34,5 +35,6 @@ final class UserRepository implements UserRepositoryInterface
     public function remove(User $user): void
     {
         $this->em->remove($user);
+        $this->em->flush();
     }
 }

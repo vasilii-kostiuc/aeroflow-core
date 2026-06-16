@@ -8,6 +8,7 @@ use App\UserAccess\Application\Security\AuthTokenIssuer;
 use App\UserAccess\Application\Security\RefreshTokenHasherInterface;
 use App\UserAccess\Domain\Exception\InvalidRefreshTokenException;
 use App\UserAccess\Domain\Repository\RefreshTokenRepositoryInterface;
+use DateTimeImmutable;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler(bus: 'command.bus')]
@@ -26,7 +27,7 @@ final readonly class RefreshTokenHandler
             $this->refreshTokenHasher->hash($command->refreshToken),
         );
 
-        if ($refreshToken === null || !$refreshToken->isActive(new \DateTimeImmutable())) {
+        if ($refreshToken === null || !$refreshToken->isActive(new DateTimeImmutable())) {
             throw InvalidRefreshTokenException::create();
         }
 

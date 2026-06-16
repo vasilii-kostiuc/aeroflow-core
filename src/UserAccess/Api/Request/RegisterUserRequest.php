@@ -13,11 +13,9 @@ final readonly class RegisterUserRequest
         #[Assert\NotBlank]
         #[Assert\Email]
         public string $email,
-
         #[Assert\NotBlank]
         #[Assert\Length(min: 8)]
         public string $password,
-
         #[Assert\NotBlank]
         public string $passwordConfirmation,
     ) {

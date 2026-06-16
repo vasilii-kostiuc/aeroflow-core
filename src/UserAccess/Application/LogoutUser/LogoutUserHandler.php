@@ -8,6 +8,7 @@ use App\UserAccess\Application\Security\RefreshTokenHasherInterface;
 use App\UserAccess\Domain\Event\UserLoggedOut;
 use App\UserAccess\Domain\Exception\InvalidRefreshTokenException;
 use App\UserAccess\Domain\Repository\RefreshTokenRepositoryInterface;
+use DateTimeImmutable;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\MessageBusInterface;
@@ -29,7 +30,7 @@ final readonly class LogoutUserHandler
             $this->refreshTokenHasher->hash($command->refreshToken),
         );
 
-        if ($refreshToken === null || !$refreshToken->isActive(new \DateTimeImmutable())) {
+        if ($refreshToken === null || !$refreshToken->isActive(new DateTimeImmutable())) {
             throw InvalidRefreshTokenException::create();
         }
 

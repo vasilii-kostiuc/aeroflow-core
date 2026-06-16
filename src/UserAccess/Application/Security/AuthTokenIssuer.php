@@ -7,6 +7,7 @@ namespace App\UserAccess\Application\Security;
 use App\UserAccess\Domain\Entity\RefreshToken;
 use App\UserAccess\Domain\Entity\User;
 use App\UserAccess\Domain\Repository\RefreshTokenRepositoryInterface;
+use DateTimeImmutable;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 final readonly class AuthTokenIssuer
@@ -27,7 +28,7 @@ final readonly class AuthTokenIssuer
         $refreshToken = RefreshToken::issue(
             user: $user,
             tokenHash: $this->refreshTokenHasher->hash($plainRefreshToken),
-            expiresAt: new \DateTimeImmutable($this->refreshTokenTtl),
+            expiresAt: new DateTimeImmutable($this->refreshTokenTtl),
         );
 
         $this->refreshTokenRepository->saveAll([$refreshToken]);
@@ -46,7 +47,7 @@ final readonly class AuthTokenIssuer
         $newRefreshToken = RefreshToken::issue(
             user: $currentRefreshToken->getUser(),
             tokenHash: $newRefreshTokenHash,
-            expiresAt: new \DateTimeImmutable($this->refreshTokenTtl),
+            expiresAt: new DateTimeImmutable($this->refreshTokenTtl),
         );
 
         $currentRefreshToken->revoke($newRefreshTokenHash);

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\UserAccess\Domain\Entity;
 
-use Doctrine\ORM\Mapping as ORM;
 use App\UserAccess\Domain\Event\UserRegistered;
+use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
@@ -116,8 +116,8 @@ class User extends \App\Shared\Domain\AggregateRoot implements UserInterface, Pa
         $user = new self();
         $user->email = $email;
         $user->password = $password;
-        
-        $user->recordEvent(new UserRegistered($user->id, $user->email));
+
+        $user->recordEvent(new UserRegistered($user->id?->toRfc4122(), $user->email));
 
         return $user;
     }

@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+
 namespace App\UserAccess\Application\RegisterUser;
 
 use App\UserAccess\Application\LoginUser\LoggedInUserResult;

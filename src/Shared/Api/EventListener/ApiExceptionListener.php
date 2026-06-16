@@ -13,6 +13,7 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Component\Messenger\Exception\HandlerFailedException;
 use Symfony\Component\Validator\Exception\ValidationFailedException;
+use Throwable;
 
 #[AsEventListener(event: KernelEvents::EXCEPTION)]
 final class ApiExceptionListener
@@ -42,7 +43,7 @@ final class ApiExceptionListener
         $event->setResponse($response);
     }
 
-    private function unwrapException(\Throwable $exception): \Throwable
+    private function unwrapException(Throwable $exception): Throwable
     {
         if ($exception instanceof HandlerFailedException && $exception->getPrevious() !== null) {
             return $exception->getPrevious();
@@ -58,7 +59,7 @@ final class ApiExceptionListener
         if ($previous instanceof ValidationFailedException) {
             $errors = [];
             foreach ($previous->getViolations() as $violation) {
-                $errors[] = ($violation->getPropertyPath() ? $violation->getPropertyPath() . ': ' : '') . $violation->getMessage();
+                $errors[] = ($violation->getPropertyPath() ? $violation->getPropertyPath().': ' : '').$violation->getMessage();
             }
 
             return ApiResponse::error('Validation failed', 422, $errors);
@@ -67,7 +68,7 @@ final class ApiExceptionListener
         return ApiResponse::error($exception->getMessage(), $exception->getStatusCode());
     }
 
-    private function handleUnexpected(\Throwable $exception): \Symfony\Component\HttpFoundation\JsonResponse
+    private function handleUnexpected(Throwable $exception): \Symfony\Component\HttpFoundation\JsonResponse
     {
         if ($this->environment !== 'prod') {
             return ApiResponse::error($exception->getMessage(), 500);

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\UserAccess\Domain\Entity;
 
+use DateTimeImmutable;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
@@ -28,26 +29,26 @@ class RefreshToken
     private string $tokenHash;
 
     #[ORM\Column]
-    private \DateTimeImmutable $expiresAt;
+    private DateTimeImmutable $expiresAt;
 
     #[ORM\Column(nullable: true)]
-    private ?\DateTimeImmutable $revokedAt = null;
+    private ?DateTimeImmutable $revokedAt = null;
 
     #[ORM\Column(length: 64, nullable: true)]
     private ?string $replacedByHash = null;
 
     #[ORM\Column]
-    private \DateTimeImmutable $createdAt;
+    private DateTimeImmutable $createdAt;
 
-    private function __construct(User $user, string $tokenHash, \DateTimeImmutable $expiresAt)
+    private function __construct(User $user, string $tokenHash, DateTimeImmutable $expiresAt)
     {
         $this->user = $user;
         $this->tokenHash = $tokenHash;
         $this->expiresAt = $expiresAt;
-        $this->createdAt = new \DateTimeImmutable();
+        $this->createdAt = new DateTimeImmutable();
     }
 
-    public static function issue(User $user, string $tokenHash, \DateTimeImmutable $expiresAt): self
+    public static function issue(User $user, string $tokenHash, DateTimeImmutable $expiresAt): self
     {
         return new self($user, $tokenHash, $expiresAt);
     }
@@ -67,12 +68,12 @@ class RefreshToken
         return $this->tokenHash;
     }
 
-    public function getExpiresAt(): \DateTimeImmutable
+    public function getExpiresAt(): DateTimeImmutable
     {
         return $this->expiresAt;
     }
 
-    public function getRevokedAt(): ?\DateTimeImmutable
+    public function getRevokedAt(): ?DateTimeImmutable
     {
         return $this->revokedAt;
     }
@@ -82,7 +83,7 @@ class RefreshToken
         return $this->replacedByHash;
     }
 
-    public function isActive(\DateTimeImmutable $now): bool
+    public function isActive(DateTimeImmutable $now): bool
     {
         return $this->revokedAt === null && $this->expiresAt > $now;
     }
@@ -93,7 +94,7 @@ class RefreshToken
             return;
         }
 
-        $this->revokedAt = new \DateTimeImmutable();
+        $this->revokedAt = new DateTimeImmutable();
         $this->replacedByHash = $replacedByHash;
     }
 }

@@ -4,31 +4,34 @@ declare(strict_types=1);
 
 namespace App\Shared\Api\EventListener;
 
+use App\Shared\Api\Exception\DomainExceptionHttpStatusMapper;
 use App\Shared\Api\Response\ApiResponse;
 use App\Shared\Domain\DomainException;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\KernelEvents;
+use Symfony\Component\Messenger\Exception\HandlerFailedException;
 use Symfony\Component\Validator\Exception\ValidationFailedException;
 
-//#[AsEventListener(event: KernelEvents::EXCEPTION)]
+#[AsEventListener(event: KernelEvents::EXCEPTION)]
 final class ApiExceptionListener
 {
     public function __construct(
         #[\Symfony\Component\DependencyInjection\Attribute\Autowire(env: 'APP_ENV')]
         private readonly string $environment,
+        private readonly DomainExceptionHttpStatusMapper $domainExceptionHttpStatusMapper,
     ) {
     }
 
     public function __invoke(ExceptionEvent $event): void
     {
-        $exception = $event->getThrowable();
+        $exception = $this->unwrapException($event->getThrowable());
 
         $response = match (true) {
             $exception instanceof DomainException => ApiResponse::error(
                 $exception->getMessage(),
-                422,
+                $this->domainExceptionHttpStatusMapper->statusFor($exception),
             ),
 
             $exception instanceof HttpExceptionInterface => $this->handleHttpException($exception),
@@ -37,6 +40,15 @@ final class ApiExceptionListener
         };
 
         $event->setResponse($response);
+    }
+
+    private function unwrapException(\Throwable $exception): \Throwable
+    {
+        if ($exception instanceof HandlerFailedException && $exception->getPrevious() !== null) {
+            return $exception->getPrevious();
+        }
+
+        return $exception;
     }
 
     private function handleHttpException(HttpExceptionInterface $exception): \Symfony\Component\HttpFoundation\JsonResponse

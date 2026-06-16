@@ -7,6 +7,7 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
+    user_access.refresh_token_ttl: '+30 days'
 
 services:
     # default configuration for services in *this* file
@@ -24,3 +25,15 @@ services:
 
     App\UserAccess\Domain\Repository\UserRepositoryInterface:
         alias: App\UserAccess\Infrastructure\Persistance\Doctrine\UserRepository
+
+    App\UserAccess\Domain\Repository\RefreshTokenRepositoryInterface:
+        alias: App\UserAccess\Infrastructure\Persistance\Doctrine\RefreshTokenRepository
+
+    App\UserAccess\Application\Security\AccessTokenIssuerInterface:
+        alias: App\UserAccess\Infrastructure\Security\LexikAccessTokenIssuer
+
+    App\UserAccess\Application\Security\RefreshTokenGeneratorInterface:
+        alias: App\UserAccess\Infrastructure\Security\RandomRefreshTokenGenerator
+
+    App\UserAccess\Application\Security\RefreshTokenHasherInterface:
+        alias: App\UserAccess\Infrastructure\Security\Sha256RefreshTokenHasher

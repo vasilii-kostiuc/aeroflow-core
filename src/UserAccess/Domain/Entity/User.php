@@ -68,7 +68,7 @@ class User extends \App\Shared\Domain\AggregateRoot implements UserInterface, Pa
     public function getRoles(): array
     {
         $roles = $this->roles;
-        $roles[] = ['ROLE_ADMIN', 'ROLE_DISPATCHER', 'ROLE_USER'];
+        $roles[] = 'ROLE_USER';
 
         return array_unique($roles);
     }

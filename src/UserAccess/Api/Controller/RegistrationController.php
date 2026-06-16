@@ -5,8 +5,7 @@ namespace App\UserAccess\Api\Controller;
 use App\Shared\Api\Response\ApiResponse;
 use App\UserAccess\Api\Request\RegisterUserRequest;
 use App\UserAccess\Application\RegisterUser\RegisterUserCommand;
-use App\UserAccess\Application\RegisterUser\RegisterUserResponse;
-use App\UserAccess\Domain\Entity\User;
+use App\UserAccess\Application\RegisterUser\RegisterUserResult;
 use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -47,7 +46,7 @@ final class RegistrationController extends AbstractController
                         new OA\Property(property: 'success', type: 'boolean', example: true),
                         new OA\Property(
                             property: 'data',
-                            ref: new Model(type: RegisterUserResponse::class),
+                            ref: new Model(type: RegisterUserResult::class),
                         ),
                         new OA\Property(property: 'message', type: 'string', example: 'User registered successfully'),
                         new OA\Property(
@@ -71,15 +70,12 @@ final class RegistrationController extends AbstractController
             password: $registerUserRequest->password,
         ));
 
-        /** @var User $user */
-        $user = $envelope->last(HandledStamp::class)?->getResult();
+        /** @var RegisterUserResult $response */
+        $response = $envelope->last(HandledStamp::class)?->getResult();
 
         return ApiResponse::created(
             message: 'User registered successfully',
-            data: new RegisterUserResponse(
-                id: (string) $user->getId(),
-                email: $user->getEmail(),
-            ),
+            data: $response,
         );
     }
 }

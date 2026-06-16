@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\UserAccess\Infrastructure\Security;
 
 use App\UserAccess\Application\Security\AccessTokenIssuerInterface;

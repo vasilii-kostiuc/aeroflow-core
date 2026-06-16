@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\UserAccess\Api\Controller;
 
 use App\Shared\Api\Response\ApiResponse;

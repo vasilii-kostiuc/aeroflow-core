@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\UserAccess\Domain\Exception;
 
 use App\Shared\Domain\DomainException;

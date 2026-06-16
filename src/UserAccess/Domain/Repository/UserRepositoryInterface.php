@@ -1,4 +1,6 @@
 <?php
+
+declare(strict_types=1);
 namespace App\UserAccess\Domain\Repository;
 
 use App\UserAccess\Domain\Entity\User;

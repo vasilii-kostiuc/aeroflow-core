@@ -8,6 +8,7 @@ use App\UserAccess\Application\LoginUser\LoggedInUserResult;
 use App\UserAccess\Application\Security\AuthTokenIssuer;
 use App\UserAccess\Application\Security\PasswordHasherInterface;
 use App\UserAccess\Domain\Exception\UserAlreadyExistsException;
+use App\UserAccess\Domain\Entity\User;
 use App\UserAccess\Domain\Repository\UserRepositoryInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;

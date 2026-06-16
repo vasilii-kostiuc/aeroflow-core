@@ -7,6 +7,7 @@ namespace App\UserAccess\Infrastructure\Security;
 use App\UserAccess\Application\Security\AccessTokenIssuerInterface;
 use App\UserAccess\Domain\Entity\User;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
+use LogicException;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 final readonly class LexikAccessTokenIssuer implements AccessTokenIssuerInterface
@@ -20,9 +21,16 @@ final readonly class LexikAccessTokenIssuer implements AccessTokenIssuerInterfac
 
     public function issue(User $user): string
     {
-        return $this->jwtTokenManager->createFromPayload($user, [
+        $email = $user->getEmail();
+        if ($email === null || $email === '') {
+            throw new LogicException('Cannot issue access token for user without email.');
+        }
+
+        $jwtUser = new JwtUser($email, $user->getRoles());
+
+        return $this->jwtTokenManager->createFromPayload($jwtUser, [
             'uid' => (string) $user->getId(),
-            'email' => $user->getEmail(),
+            'email' => $email,
             'roles' => $user->getRoles(),
         ]);
     }

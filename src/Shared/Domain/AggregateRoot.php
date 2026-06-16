@@ -6,6 +6,9 @@ namespace App\Shared\Domain;
 
 abstract class AggregateRoot
 {
+    /**
+     * @var list<DomainEvent>
+     */
     private array $domainEvents = [];
 
     protected function recordEvent(DomainEvent $event): void
@@ -13,6 +16,9 @@ abstract class AggregateRoot
         $this->domainEvents[] = $event;
     }
 
+    /**
+     * @return list<DomainEvent>
+     */
     public function pullEvents(): array
     {
         $events = $this->domainEvents;

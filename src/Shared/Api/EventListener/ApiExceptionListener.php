@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Shared\Api\EventListener;
 
 use App\Shared\Api\Exception\DomainExceptionHttpStatusMapper;
+use App\Shared\Api\Response\ApiError;
 use App\Shared\Api\Response\ApiResponse;
 use App\Shared\Domain\DomainException;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
@@ -59,7 +60,11 @@ final class ApiExceptionListener
         if ($previous instanceof ValidationFailedException) {
             $errors = [];
             foreach ($previous->getViolations() as $violation) {
-                $errors[] = ($violation->getPropertyPath() ? $violation->getPropertyPath().': ' : '').$violation->getMessage();
+                $errors[] = new ApiError(
+                    message: $violation->getMessage(),
+                    field: $violation->getPropertyPath() ?: null,
+                    code: $violation->getCode(),
+                );
             }
 
             return ApiResponse::error('Validation failed', 422, $errors);

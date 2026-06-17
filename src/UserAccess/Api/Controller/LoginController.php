@@ -53,7 +53,14 @@ final class LoginController extends AbstractController
                         new OA\Property(
                             property: 'errors',
                             type: 'array',
-                            items: new OA\Items(type: 'string'),
+                            items: new OA\Items(
+                                properties: [
+                                    new OA\Property(property: 'message', type: 'string'),
+                                    new OA\Property(property: 'field', type: 'string', nullable: true),
+                                    new OA\Property(property: 'code', type: 'string', nullable: true),
+                                ],
+                                type: 'object',
+                            ),
                             example: [],
                         ),
                     ],

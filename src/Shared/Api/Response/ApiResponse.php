@@ -24,11 +24,32 @@ final class ApiResponse
         return new JsonResponse(null, Response::HTTP_NO_CONTENT);
     }
 
+    /**
+     * @param list<ApiError> $errors
+     */
     public static function error(string $message, int $status = Response::HTTP_BAD_REQUEST, array $errors = []): JsonResponse
     {
-        return new JsonResponse(self::envelope(false, null, $message, $errors), $status);
+        return new JsonResponse(
+            self::envelope(
+                false,
+                null,
+                $message,
+                array_map(static fn (ApiError $error) => $error->toArray(), $errors),
+            ),
+            $status,
+        );
     }
 
+    /**
+     * @param list<array{message: string, field?: string, code?: string}> $errors
+     *
+     * @return array{
+     *     success: bool,
+     *     data: mixed,
+     *     message: string|null,
+     *     errors: list<array{message: string, field?: string, code?: string}>
+     * }
+     */
     private static function envelope(bool $success, mixed $data, ?string $message, array $errors): array
     {
         return [

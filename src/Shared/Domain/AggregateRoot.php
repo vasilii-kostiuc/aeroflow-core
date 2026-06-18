@@ -11,7 +11,7 @@ abstract class AggregateRoot
      */
     private array $domainEvents = [];
 
-    protected function recordEvent(DomainEvent $event): void
+    final protected function recordEvent(DomainEvent $event): void
     {
         $this->domainEvents[] = $event;
     }
@@ -19,7 +19,7 @@ abstract class AggregateRoot
     /**
      * @return list<DomainEvent>
      */
-    public function pullEvents(): array
+    final public function pullEvents(): array
     {
         $events = $this->domainEvents;
         $this->domainEvents = [];

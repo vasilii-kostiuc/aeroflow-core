@@ -29,10 +29,14 @@
         "symfony/yaml": "8.1.*"
     },
     "require-dev": {
+        "dama/doctrine-test-bundle": "^8.6",
         "friendsofphp/php-cs-fixer": "^3.95.8",
         "phpstan/phpstan": "^2.2.2",
         "phpstan/phpstan-doctrine": "^2.0.27",
         "phpstan/phpstan-symfony": "^2.0.20",
+        "phpunit/phpunit": "^13.2",
+        "symfony/browser-kit": "8.1.*",
+        "symfony/css-selector": "8.1.*",
         "symfony/maker-bundle": "^1.67"
     },
     "config": {
@@ -78,7 +82,7 @@
             "@auto-scripts"
         ],
         "phpstan": [
-            "phpstan analyse --no-progress --debug"
+            "phpstan analyse --no-progress --debug --memory-limit=512M"
         ],
         "cs:check": [
             "php-cs-fixer fix --dry-run --diff --sequential"
@@ -86,9 +90,25 @@
         "cs:fix": [
             "php-cs-fixer fix --sequential"
         ],
+        "test": [
+            "php bin/phpunit"
+        ],
+        "test:unit": [
+            "php bin/phpunit --testsuite Unit"
+        ],
+        "test:application": [
+            "php bin/phpunit --testsuite Application"
+        ],
+        "test:integration": [
+            "php bin/phpunit --testsuite Integration"
+        ],
+        "test:functional": [
+            "php bin/phpunit --testsuite Functional"
+        ],
         "qa": [
             "@phpstan",
-            "@cs:check"
+            "@cs:check",
+            "@test"
         ]
     },
     "conflict": {

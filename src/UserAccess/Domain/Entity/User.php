@@ -17,8 +17,6 @@ class User extends AggregateRoot
 {
     #[ORM\Id]
     #[ORM\Column(type: UuidType::NAME, unique: true)]
-    #[ORM\GeneratedValue(strategy: 'CUSTOM')]
-    #[ORM\CustomIdGenerator(class: 'doctrine.uuid_generator')]
     private ?Uuid $id = null;
 
     #[ORM\Column(length: 180)]
@@ -65,10 +63,11 @@ class User extends AggregateRoot
     public static function register(string $email, string $password): self
     {
         $user = new self();
+        $user->id = Uuid::v7();
         $user->email = $email;
         $user->password = $password;
 
-        $user->recordEvent(new UserRegistered($user->id?->toRfc4122(), $user->email));
+        $user->recordEvent(new UserRegistered($user->id->toRfc4122(), $user->email));
 
         return $user;
     }

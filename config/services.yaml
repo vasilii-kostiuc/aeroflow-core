@@ -37,3 +37,9 @@ services:
 
     App\UserAccess\Application\Security\RefreshTokenHasherInterface:
         alias: App\UserAccess\Infrastructure\Security\Sha256RefreshTokenHasher
+
+    App\FlightOperations\Domain\Repository\FlightDefinitionRepositoryInterface:
+        alias: App\FlightOperations\Infrastructure\Persistence\Doctrine\FlightDefinitionRepository
+
+    App\FlightOperations\Application\ListFlightDefinitions\FlightDefinitionListQueryInterface:
+        alias: App\FlightOperations\Infrastructure\Persistence\Doctrine\DbalFlightDefinitionListQuery

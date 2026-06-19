@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Shared\Api\Exception;
 
+use App\FlightOperations\Domain\Exception\DuplicateFlightDefinitionException;
+use App\FlightOperations\Domain\Exception\FlightDefinitionNotFoundException;
 use App\Shared\Domain\DomainException;
 use App\UserAccess\Domain\Exception\InvalidCredentialsException;
 use App\UserAccess\Domain\Exception\InvalidRefreshTokenException;
@@ -19,6 +21,8 @@ final class DomainExceptionHttpStatusMapper
         InvalidCredentialsException::class => Response::HTTP_UNAUTHORIZED,
         InvalidRefreshTokenException::class => Response::HTTP_UNAUTHORIZED,
         UserAlreadyExistsException::class => Response::HTTP_CONFLICT,
+        DuplicateFlightDefinitionException::class => Response::HTTP_CONFLICT,
+        FlightDefinitionNotFoundException::class => Response::HTTP_NOT_FOUND,
     ];
 
     public function statusFor(DomainException $exception): int

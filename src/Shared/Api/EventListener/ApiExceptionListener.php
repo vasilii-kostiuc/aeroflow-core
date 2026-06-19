@@ -7,6 +7,7 @@ namespace App\Shared\Api\EventListener;
 use App\Shared\Api\Exception\DomainExceptionHttpStatusMapper;
 use App\Shared\Api\Response\ApiError;
 use App\Shared\Api\Response\ApiResponse;
+use App\Shared\Application\ApplicationException;
 use App\Shared\Domain\DomainException;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
@@ -36,6 +37,11 @@ final class ApiExceptionListener
                 $this->domainExceptionHttpStatusMapper->statusFor($exception),
             ),
 
+            $exception instanceof ApplicationException => ApiResponse::error(
+                $exception->getMessage(),
+                422,
+            ),
+
             $exception instanceof HttpExceptionInterface => $this->handleHttpException($exception),
 
             default => $this->handleUnexpected($exception),
@@ -57,20 +63,20 @@ final class ApiExceptionListener
     {
         $previous = $exception->getPrevious();
 
-        if ($previous instanceof ValidationFailedException) {
-            $errors = [];
-            foreach ($previous->getViolations() as $violation) {
-                $errors[] = new ApiError(
-                    message: $violation->getMessage(),
-                    field: $violation->getPropertyPath() ?: null,
-                    code: $violation->getCode(),
-                );
-            }
-
-            return ApiResponse::error('Validation failed', 422, $errors);
+        if (!$previous instanceof ValidationFailedException) {
+            return ApiResponse::error($exception->getMessage(), $exception->getStatusCode());
         }
 
-        return ApiResponse::error($exception->getMessage(), $exception->getStatusCode());
+        $errors = [];
+        foreach ($previous->getViolations() as $violation) {
+            $errors[] = new ApiError(
+                message: $violation->getMessage(),
+                field: $violation->getPropertyPath() ?: null,
+                code: $violation->getCode(),
+            );
+        }
+
+        return ApiResponse::error('Validation failed', 422, $errors);
     }
 
     private function handleUnexpected(Throwable $exception): \Symfony\Component\HttpFoundation\JsonResponse

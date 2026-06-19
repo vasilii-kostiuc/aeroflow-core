@@ -6,7 +6,6 @@ services:
     container_name: aeroflow_core_app
     volumes:
       - .:/var/www
-      - /var/www/vendor
     environment:
       APP_ENV: dev
       DATABASE_URL: postgresql://aeroflow:aeroflow@aeroflow_core_postgres:5432/aeroflow?serverVersion=16&charset=utf8

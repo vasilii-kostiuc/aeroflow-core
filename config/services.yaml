@@ -43,3 +43,9 @@ services:
 
     App\FlightOperations\Application\ListFlightDefinitions\FlightDefinitionListQueryInterface:
         alias: App\FlightOperations\Infrastructure\Persistence\Doctrine\DbalFlightDefinitionListQuery
+
+    App\FlightOperations\Domain\Repository\AirportRepositoryInterface:
+        alias: App\FlightOperations\Infrastructure\Persistence\Doctrine\AirportRepository
+
+    App\FlightOperations\Application\ListAirports\AirportListQueryInterface:
+        alias: App\FlightOperations\Infrastructure\Persistence\Doctrine\DbalAirportListQuery

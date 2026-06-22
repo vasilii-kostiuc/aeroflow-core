@@ -49,3 +49,6 @@ services:
 
     App\FlightOperations\Application\ListAirports\AirportListQueryInterface:
         alias: App\FlightOperations\Infrastructure\Persistence\Doctrine\DbalAirportListQuery
+
+    App\Announcements\Domain\Repository\AnnouncementRepositoryInterface:
+        alias: App\Announcements\Infrastructure\Persistence\Doctrine\AnnouncementRepository

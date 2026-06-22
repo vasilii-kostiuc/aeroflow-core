@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Shared\Api\Exception;
 
+use App\Announcements\Domain\Exception\AnnouncementNotFoundException;
 use App\FlightOperations\Domain\Exception\AirportNotFoundException;
 use App\FlightOperations\Domain\Exception\DuplicateAirportException;
 use App\FlightOperations\Domain\Exception\DuplicateFlightDefinitionException;
@@ -27,6 +28,7 @@ final class DomainExceptionHttpStatusMapper
         FlightDefinitionNotFoundException::class => Response::HTTP_NOT_FOUND,
         DuplicateAirportException::class => Response::HTTP_CONFLICT,
         AirportNotFoundException::class => Response::HTTP_NOT_FOUND,
+        AnnouncementNotFoundException::class => Response::HTTP_NOT_FOUND,
     ];
 
     public function statusFor(DomainException $exception): int

@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Announcements\Domain\Entity;
 
+use App\Announcements\Domain\Enum\AnnouncementTemplateSegmentType;
+use App\Announcements\Domain\Enum\DynamicSlotType;
+use App\Announcements\Domain\Exception\InvalidAnnouncementTemplateSegmentException;
 use App\Shared\Domain\ValueObject\LanguageCode;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -13,6 +16,7 @@ use Doctrine\ORM\Mapping as ORM;
 use InvalidArgumentException;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
+use ValueError;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'announcement_variant')]
@@ -139,9 +143,70 @@ final class AnnouncementVariant
         }
         $this->segments->clear();
         foreach ($segments as $data) {
-            $this->segments->add(AnnouncementTemplateSegment::create($this, $this->config->getAnnouncementType(), $data));
+            $this->segments->add($this->createSegment($data));
         }
         $this->updatedAt = self::now();
+    }
+
+    /** @param array{sortOrder:int,type:string,audioAssetId?:?string,slot?:?string,durationMs?:?int,text?:?string} $data */
+    private function createSegment(array $data): AnnouncementTemplateSegment
+    {
+        $type = AnnouncementTemplateSegmentType::from($data['type']);
+
+        return match ($type) {
+            AnnouncementTemplateSegmentType::AudioAsset => AnnouncementTemplateSegment::audioAsset(
+                $this,
+                $data['sortOrder'],
+                $this->parseAudioAssetId($data['audioAssetId'] ?? null),
+            ),
+            AnnouncementTemplateSegmentType::DynamicSlot => AnnouncementTemplateSegment::dynamicSlot(
+                $this,
+                $data['sortOrder'],
+                $this->parseDynamicSlot($data['slot'] ?? null),
+                $this->config->getAnnouncementType(),
+            ),
+            AnnouncementTemplateSegmentType::Pause => AnnouncementTemplateSegment::pause(
+                $this,
+                $data['sortOrder'],
+                $this->parsePauseDuration($data['durationMs'] ?? null),
+            ),
+            AnnouncementTemplateSegmentType::Text => AnnouncementTemplateSegment::text(
+                $this,
+                $data['sortOrder'],
+                (string) ($data['text'] ?? ''),
+            ),
+        };
+    }
+
+    private function parseAudioAssetId(mixed $audioAssetId): Uuid
+    {
+        if (!is_string($audioAssetId) || !Uuid::isValid($audioAssetId)) {
+            throw InvalidAnnouncementTemplateSegmentException::invalidAudioAsset();
+        }
+
+        return Uuid::fromString($audioAssetId);
+    }
+
+    private function parseDynamicSlot(mixed $slot): DynamicSlotType
+    {
+        if (!is_string($slot)) {
+            throw InvalidAnnouncementTemplateSegmentException::invalidSlot('');
+        }
+
+        try {
+            return DynamicSlotType::from($slot);
+        } catch (ValueError) {
+            throw InvalidAnnouncementTemplateSegmentException::invalidSlot($slot);
+        }
+    }
+
+    private function parsePauseDuration(mixed $durationMs): int
+    {
+        if (!is_int($durationMs)) {
+            throw InvalidAnnouncementTemplateSegmentException::invalidPause();
+        }
+
+        return $durationMs;
     }
 
     private static function now(): DateTimeImmutable

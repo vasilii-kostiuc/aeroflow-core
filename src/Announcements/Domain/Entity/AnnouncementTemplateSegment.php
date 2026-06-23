@@ -54,66 +54,61 @@ final class AnnouncementTemplateSegment
     {
     }
 
-    /** @param array{sortOrder:int,type:string,audioAssetId?:?string,slot?:?string,durationMs?:?int,text?:?string} $data */
-    public static function create(AnnouncementVariant $variant, FlightAnnouncementType $announcementType, array $data): self
+    public static function audioAsset(AnnouncementVariant $variant, int $sortOrder, Uuid $audioAssetId): self
     {
-        $segment = new self();
-        $segment->id = Uuid::v7();
-        $segment->variant = $variant;
-        $segment->createdAt = self::now();
-        $segment->apply($announcementType, $data);
+        $segment = self::initialize($variant, $sortOrder, AnnouncementTemplateSegmentType::AudioAsset);
+        $segment->audioAssetId = $audioAssetId;
 
         return $segment;
     }
 
-    /** @param array{sortOrder:int,type:string,audioAssetId?:?string,slot?:?string,durationMs?:?int,text?:?string} $data */
-    private function apply(FlightAnnouncementType $announcementType, array $data): void
-    {
-        if ($data['sortOrder'] < 1) {
-            throw InvalidAnnouncementTemplateSegmentException::invalidSortOrder();
+    public static function dynamicSlot(
+        AnnouncementVariant $variant,
+        int $sortOrder,
+        DynamicSlotType $slot,
+        FlightAnnouncementType $announcementType,
+    ): self {
+        $segment = self::initialize($variant, $sortOrder, AnnouncementTemplateSegmentType::DynamicSlot);
+        $compatible = match ($slot) {
+            DynamicSlotType::CheckInCounters => in_array($announcementType, [
+                FlightAnnouncementType::CheckInOpening,
+                FlightAnnouncementType::CheckInContinuation,
+                FlightAnnouncementType::CheckInClosing,
+            ], true),
+            DynamicSlotType::GateCode => $announcementType === FlightAnnouncementType::BoardingInvitation,
+        };
+        if (!$compatible) {
+            throw InvalidAnnouncementTemplateSegmentException::invalidSlot($slot->value);
         }
-        $type = AnnouncementTemplateSegmentType::from($data['type']);
-        $this->sortOrder = $data['sortOrder'];
-        $this->type = $type;
-        $this->audioAssetId = null;
-        $this->slot = null;
-        $this->durationMs = null;
-        $this->text = null;
 
-        if ($type === AnnouncementTemplateSegmentType::AudioAsset) {
-            $id = $data['audioAssetId'] ?? null;
-            if (!is_string($id) || !Uuid::isValid($id)) {
-                throw InvalidAnnouncementTemplateSegmentException::invalidAudioAsset();
-            }
-            $this->audioAssetId = Uuid::fromString($id);
-        } elseif ($type === AnnouncementTemplateSegmentType::DynamicSlot) {
-            $slot = DynamicSlotType::from((string) ($data['slot'] ?? ''));
-            $compatible = match ($slot) {
-                DynamicSlotType::CheckInCounters => in_array($announcementType, [
-                    FlightAnnouncementType::CheckInOpening,
-                    FlightAnnouncementType::CheckInContinuation,
-                    FlightAnnouncementType::CheckInClosing,
-                ], true),
-                DynamicSlotType::GateCode => $announcementType === FlightAnnouncementType::BoardingInvitation,
-            };
-            if (!$compatible) {
-                throw InvalidAnnouncementTemplateSegmentException::invalidSlot($slot->value);
-            }
-            $this->slot = $slot;
-        } elseif ($type === AnnouncementTemplateSegmentType::Pause) {
-            $duration = $data['durationMs'] ?? null;
-            if (!is_int($duration) || $duration < 100 || $duration > 10000) {
-                throw InvalidAnnouncementTemplateSegmentException::invalidPause();
-            }
-            $this->durationMs = $duration;
-        } else {
-            $text = trim((string) ($data['text'] ?? ''));
-            if ($text === '') {
-                throw InvalidAnnouncementTemplateSegmentException::invalidText();
-            }
-            $this->text = $text;
+        $segment->slot = $slot;
+
+        return $segment;
+    }
+
+    public static function pause(AnnouncementVariant $variant, int $sortOrder, int $durationMs): self
+    {
+        $segment = self::initialize($variant, $sortOrder, AnnouncementTemplateSegmentType::Pause);
+        if ($durationMs < 100 || $durationMs > 10000) {
+            throw InvalidAnnouncementTemplateSegmentException::invalidPause();
         }
-        $this->updatedAt = self::now();
+
+        $segment->durationMs = $durationMs;
+
+        return $segment;
+    }
+
+    public static function text(AnnouncementVariant $variant, int $sortOrder, string $text): self
+    {
+        $segment = self::initialize($variant, $sortOrder, AnnouncementTemplateSegmentType::Text);
+        $text = trim($text);
+        if ($text === '') {
+            throw InvalidAnnouncementTemplateSegmentException::invalidText();
+        }
+
+        $segment->text = $text;
+
+        return $segment;
     }
 
     public function getId(): Uuid
@@ -167,5 +162,30 @@ final class AnnouncementTemplateSegment
     private static function now(): DateTimeImmutable
     {
         return new DateTimeImmutable('now', new DateTimeZone('UTC'));
+    }
+
+    private static function initialize(
+        AnnouncementVariant $variant,
+        int $sortOrder,
+        AnnouncementTemplateSegmentType $type,
+    ): self {
+        if ($sortOrder < 1) {
+            throw InvalidAnnouncementTemplateSegmentException::invalidSortOrder();
+        }
+
+        $now = self::now();
+        $segment = new self();
+        $segment->id = Uuid::v7();
+        $segment->variant = $variant;
+        $segment->sortOrder = $sortOrder;
+        $segment->type = $type;
+        $segment->audioAssetId = null;
+        $segment->slot = null;
+        $segment->durationMs = null;
+        $segment->text = null;
+        $segment->createdAt = $now;
+        $segment->updatedAt = $now;
+
+        return $segment;
     }
 }

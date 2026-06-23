@@ -22,16 +22,21 @@ final class FlightAnnouncementConfigTest extends TestCase
             ['sortOrder' => 3, 'type' => 'pause', 'durationMs' => 500],
         ], true);
 
-        self::assertSame(['audio_asset', 'dynamic_slot', 'pause'], array_map(static fn ($segment): string => $segment->getType()->value, $variant->getSegments()));
+        [$audioAsset, $dynamicSlot, $pause] = $variant->getSegments();
+        self::assertSame(['audio_asset', 'dynamic_slot', 'pause'], array_map(static fn ($segment): string => $segment->getType()->value, [$audioAsset, $dynamicSlot, $pause]));
+        self::assertNotNull($audioAsset->getAudioAssetId());
+        self::assertSame('check_in_counters', $dynamicSlot->getSlot()?->value);
+        self::assertSame(500, $pause->getDurationMs());
         self::assertSame([], $config->validationErrors());
     }
 
     public function testTextSegmentRequiresTts(): void
     {
         $config = FlightAnnouncementConfig::create(Uuid::v7()->toRfc4122(), FlightAnnouncementType::Arrival, true, null);
-        $config->addVariant(LanguageCode::fromString('en'), 1, [
-            ['sortOrder' => 1, 'type' => 'text', 'text' => 'Arrived'],
+        $variant = $config->addVariant(LanguageCode::fromString('en'), 1, [
+            ['sortOrder' => 1, 'type' => 'text', 'text' => '  Arrived  '],
         ], true);
+        self::assertSame('Arrived', $variant->getSegments()[0]->getText());
         self::assertContains('text_segment_requires_tts', $config->validationErrors());
     }
 

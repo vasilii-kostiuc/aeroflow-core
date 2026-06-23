@@ -6,50 +6,75 @@ namespace App\Tests\Functional\Announcements\Api;
 
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 final class AnnouncementApiTest extends WebTestCase
 {
-    public function testCreateReadListChangeLanguagesAndCancel(): void
+    public function testCreatesPreparedAnnouncementFromGateSlot(): void
     {
         $client = static::createClient();
         $this->authenticate($client);
-        $flightDefinitionId = $this->createFlightDefinition($client);
+        $flightId = $this->createFlightDefinition($client);
+        $gateId = $this->createGate($client);
+        $assetId = $this->uploadAsset($client);
+
+        $this->json($client, 'POST', '/api/v1/admin/audio-prompts', [
+            'kind' => 'gate_code',
+            'value' => 'A12',
+            'languageCode' => 'en',
+            'audioAssetId' => $assetId,
+        ]);
+        self::assertResponseStatusCodeSame(201);
+
+        $this->json($client, 'POST', sprintf('/api/v1/admin/flight-definitions/%s/announcement-configs', $flightId), [
+            'announcementType' => 'boarding_invitation',
+            'enabled' => true,
+            'repeatEveryMinutes' => null,
+        ]);
+        $configId = $this->response($client)['data']['id'];
+        $this->json($client, 'POST', sprintf('/api/v1/admin/flight-definitions/%s/announcement-configs/%s/variants', $flightId, $configId), [
+            'languageCode' => 'en',
+            'sortOrder' => 1,
+            'segments' => [['sortOrder' => 1, 'type' => 'dynamic_slot', 'slot' => 'gate_code']],
+            'enabled' => true,
+        ]);
+        self::assertResponseStatusCodeSame(201);
 
         $this->json($client, 'POST', '/api/v1/announcements', [
             'type' => 'boarding_invitation',
-            'flightDefinitionId' => $flightDefinitionId,
-            'languages' => ['ro', 'ru', 'en'],
-            'gateCode' => 'a12',
+            'flightDefinitionId' => $flightId,
+            'languages' => ['en'],
+            'gateId' => $gateId,
         ]);
         self::assertResponseStatusCodeSame(201);
         $created = $this->response($client)['data'];
-        self::assertSame($flightDefinitionId, $created['flightDefinitionId']);
-        self::assertSame(['ro', 'ru', 'en'], $created['languages']);
-        $id = $created['id'];
+        self::assertSame('A12', $created['gate']['code']);
+        self::assertSame($assetId, $created['audioSequence'][0]['items'][0]['audioAssetId']);
+    }
 
-        $client->request('GET', '/api/v1/announcements/'.$id);
-        self::assertResponseIsSuccessful();
+    private function createGate(KernelBrowser $client): string
+    {
+        $this->json($client, 'POST', '/api/v1/admin/gates', ['code' => 'A12', 'displayName' => 'Gate A12', 'sortOrder' => 1]);
+        self::assertResponseStatusCodeSame(201);
 
-        $this->json($client, 'PUT', '/api/v1/announcements/'.$id.'/languages', [
-            'languages' => ['en', 'ro'],
-        ]);
-        self::assertResponseIsSuccessful();
-        self::assertSame(['en', 'ro'], $this->response($client)['data']['languages']);
+        return $this->response($client)['data']['id'];
+    }
 
-        $this->json($client, 'POST', '/api/v1/announcements/'.$id.'/cancel', []);
-        self::assertResponseIsSuccessful();
-        self::assertSame('cancelled', $this->response($client)['data']['status']);
+    private function uploadAsset(KernelBrowser $client): string
+    {
+        $path = tempnam(sys_get_temp_dir(), 'prompt-');
+        self::assertIsString($path);
+        file_put_contents($path, "RIFF\x24\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01\x00\x01\x00\x44\xAC\x00\x00\x88\x58\x01\x00\x02\x00\x10\x00data\x00\x00\x00\x00");
+        $client->request('POST', '/api/v1/admin/audio-assets', ['languageCode' => 'en'], ['file' => new UploadedFile($path, 'gate-a12.wav', 'audio/wav', null, true)]);
+        self::assertResponseStatusCodeSame(201);
 
-        $client->request('GET', '/api/v1/announcements');
-        self::assertResponseIsSuccessful();
-        self::assertNotEmpty($this->response($client)['data']);
+        return $this->response($client)['data']['id'];
     }
 
     private function createFlightDefinition(KernelBrowser $client): string
     {
-        $suffix = (string) random_int(100, 999);
         $this->json($client, 'POST', '/api/v1/flight-definitions', [
-            'flightNumber' => 'AN'.$suffix,
+            'flightNumber' => 'AN'.random_int(100, 999),
             'direction' => 'departure',
             'originAirportCode' => 'RMO',
             'destinationAirportCode' => 'FCO',
@@ -67,30 +92,16 @@ final class AnnouncementApiTest extends WebTestCase
             'passwordConfirmation' => 'password123',
         ]);
         self::assertResponseStatusCodeSame(201);
-        $client->setServerParameter(
-            'HTTP_AUTHORIZATION',
-            'Bearer '.$this->response($client)['data']['accessToken'],
-        );
+        $client->setServerParameter('HTTP_AUTHORIZATION', 'Bearer '.$this->response($client)['data']['accessToken']);
     }
 
-    /**
-     * @param array<string, mixed> $payload
-     */
+    /** @param array<string,mixed> $payload */
     private function json(KernelBrowser $client, string $method, string $uri, array $payload): void
     {
-        $client->request(
-            $method,
-            $uri,
-            [],
-            [],
-            ['CONTENT_TYPE' => 'application/json'],
-            json_encode($payload, JSON_THROW_ON_ERROR),
-        );
+        $client->request($method, $uri, [], [], ['CONTENT_TYPE' => 'application/json'], json_encode($payload, JSON_THROW_ON_ERROR));
     }
 
-    /**
-     * @return array<string, mixed>
-     */
+    /** @return array<string,mixed> */
     private function response(KernelBrowser $client): array
     {
         return json_decode((string) $client->getResponse()->getContent(), true, 512, JSON_THROW_ON_ERROR);

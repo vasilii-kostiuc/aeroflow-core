@@ -8,12 +8,8 @@ use App\Announcements\Domain\Enum\AnnouncementStatus;
 use App\Announcements\Domain\Enum\AnnouncementType;
 use App\Announcements\Domain\Event\AnnouncementCancelled;
 use App\Announcements\Domain\Event\AnnouncementCreated;
-use App\Announcements\Domain\Event\AnnouncementLanguagesChanged;
-use App\Announcements\Domain\Exception\AnnouncementLanguagesCannotBeChangedException;
 use App\Announcements\Domain\Exception\InvalidFlightDefinitionIdException;
 use App\Announcements\Domain\ValueObject\AnnouncementLanguages;
-use App\Announcements\Domain\ValueObject\CheckInCounterRange;
-use App\Announcements\Domain\ValueObject\GateCode;
 use App\Shared\Domain\AggregateRoot;
 use App\Shared\Domain\ValueObject\LanguageCode;
 use DateTimeImmutable;
@@ -30,34 +26,26 @@ final class Announcement extends AggregateRoot
     #[ORM\Id]
     #[ORM\Column(type: UuidType::NAME, unique: true)]
     private Uuid $id;
-
     #[ORM\Column(length: 32, enumType: AnnouncementType::class)]
     private AnnouncementType $type;
-
     #[ORM\Column(type: UuidType::NAME)]
     private Uuid $flightDefinitionId;
-
-    #[ORM\Column(nullable: true)]
-    private ?int $checkInCounterStart;
-
-    #[ORM\Column(nullable: true)]
-    private ?int $checkInCounterEnd;
-
-    #[ORM\Column(length: 16, nullable: true)]
-    private ?string $gateCode;
-
-    /**
-     * @var list<string>
-     */
+    /** @var list<array{id:string,code:string}> */
+    #[ORM\Column(type: 'json')]
+    private array $checkInCounters;
+    /** @var array{id:string,code:string}|null */
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $gate;
+    /** @var list<string> */
     #[ORM\Column(type: 'json')]
     private array $languageCodes;
-
+    /** @var list<array{languageCode:string,sortOrder:int,items:list<array<string,mixed>>}> */
+    #[ORM\Column(type: 'json')]
+    private array $audioSequence;
     #[ORM\Column(length: 32, enumType: AnnouncementStatus::class)]
     private AnnouncementStatus $status;
-
     #[ORM\Column]
     private DateTimeImmutable $createdAt;
-
     #[ORM\Column(nullable: true)]
     private ?DateTimeImmutable $cancelledAt;
 
@@ -65,88 +53,53 @@ final class Announcement extends AggregateRoot
     {
     }
 
-    public static function openCheckIn(
+    /**
+     * @param list<array{id:string,code:string}>                                             $checkInCounters
+     * @param array{id:string,code:string}|null                                              $gate
+     * @param list<array{languageCode:string,sortOrder:int,items:list<array<string,mixed>>}> $audioSequence
+     */
+    public static function createPrepared(
+        AnnouncementType $type,
         string $flightDefinitionId,
-        CheckInCounterRange $counterRange,
         AnnouncementLanguages $languages,
+        array $checkInCounters,
+        ?array $gate,
+        array $audioSequence,
     ): self {
-        return self::create(
-            AnnouncementType::CheckInOpening,
+        if (!Uuid::isValid($flightDefinitionId)) {
+            throw InvalidFlightDefinitionIdException::forValue($flightDefinitionId);
+        }
+        $now = self::now();
+        $announcement = new self();
+        $announcement->id = Uuid::v7();
+        $announcement->type = $type;
+        $announcement->flightDefinitionId = Uuid::fromString($flightDefinitionId);
+        $announcement->checkInCounters = $checkInCounters;
+        $announcement->gate = $gate;
+        $announcement->languageCodes = $languages->toStrings();
+        $announcement->audioSequence = $audioSequence;
+        $announcement->status = AnnouncementStatus::Prepared;
+        $announcement->createdAt = $now;
+        $announcement->cancelledAt = null;
+        $announcement->recordEvent(new AnnouncementCreated(
+            $announcement->id->toRfc4122(),
+            $type->value,
             $flightDefinitionId,
-            $languages,
-            $counterRange,
-        );
-    }
+            $languages->toStrings(),
+            $now,
+        ));
 
-    public static function closeCheckIn(
-        string $flightDefinitionId,
-        CheckInCounterRange $counterRange,
-        AnnouncementLanguages $languages,
-    ): self {
-        return self::create(
-            AnnouncementType::CheckInClosing,
-            $flightDefinitionId,
-            $languages,
-            $counterRange,
-        );
-    }
-
-    public static function inviteToBoard(
-        string $flightDefinitionId,
-        GateCode $gateCode,
-        AnnouncementLanguages $languages,
-    ): self {
-        return self::create(
-            AnnouncementType::BoardingInvitation,
-            $flightDefinitionId,
-            $languages,
-            gateCode: $gateCode,
-        );
-    }
-
-    public static function announceArrival(
-        string $flightDefinitionId,
-        AnnouncementLanguages $languages,
-    ): self {
-        return self::create(
-            AnnouncementType::Arrival,
-            $flightDefinitionId,
-            $languages,
-        );
+        return $announcement;
     }
 
     public function cancel(): bool
     {
-        if (AnnouncementStatus::Cancelled === $this->status) {
+        if ($this->status === AnnouncementStatus::Cancelled) {
             return false;
         }
-
         $this->status = AnnouncementStatus::Cancelled;
         $this->cancelledAt = self::now();
-        $this->recordEvent(new AnnouncementCancelled(
-            $this->id->toRfc4122(),
-            $this->cancelledAt,
-        ));
-
-        return true;
-    }
-
-    public function changeLanguages(AnnouncementLanguages $languages): bool
-    {
-        if (AnnouncementStatus::Cancelled === $this->status) {
-            throw AnnouncementLanguagesCannotBeChangedException::forCancelledAnnouncement($this->id->toRfc4122());
-        }
-
-        if ($this->getLanguages()->equals($languages)) {
-            return false;
-        }
-
-        $this->languageCodes = $languages->toStrings();
-        $this->recordEvent(new AnnouncementLanguagesChanged(
-            $this->id->toRfc4122(),
-            $languages->toStrings(),
-            self::now(),
-        ));
+        $this->recordEvent(new AnnouncementCancelled($this->id->toRfc4122(), $this->cancelledAt));
 
         return true;
     }
@@ -166,26 +119,27 @@ final class Announcement extends AggregateRoot
         return $this->flightDefinitionId;
     }
 
-    public function getCheckInCounterRange(): ?CheckInCounterRange
+    /** @return list<array{id:string,code:string}> */
+    public function getCheckInCounters(): array
     {
-        if ($this->checkInCounterStart === null || $this->checkInCounterEnd === null) {
-            return null;
-        }
-
-        return CheckInCounterRange::between($this->checkInCounterStart, $this->checkInCounterEnd);
+        return $this->checkInCounters;
     }
 
-    public function getGateCode(): ?GateCode
+    /** @return array{id:string,code:string}|null */
+    public function getGate(): ?array
     {
-        return $this->gateCode === null ? null : GateCode::fromString($this->gateCode);
+        return $this->gate;
+    }
+
+    /** @return list<array{languageCode:string,sortOrder:int,items:list<array<string,mixed>>}> */
+    public function getAudioSequence(): array
+    {
+        return $this->audioSequence;
     }
 
     public function getLanguages(): AnnouncementLanguages
     {
-        return AnnouncementLanguages::fromCodes(...array_map(
-            static fn (string $code): LanguageCode => LanguageCode::fromString($code),
-            $this->languageCodes,
-        ));
+        return AnnouncementLanguages::fromCodes(...array_map(static fn (string $code): LanguageCode => LanguageCode::fromString($code), $this->languageCodes));
     }
 
     public function getStatus(): AnnouncementStatus
@@ -201,41 +155,6 @@ final class Announcement extends AggregateRoot
     public function getCancelledAt(): ?DateTimeImmutable
     {
         return $this->cancelledAt;
-    }
-
-    private static function create(
-        AnnouncementType $type,
-        string $flightDefinitionId,
-        AnnouncementLanguages $languages,
-        ?CheckInCounterRange $counterRange = null,
-        ?GateCode $gateCode = null,
-    ): self {
-        if (!Uuid::isValid($flightDefinitionId)) {
-            throw InvalidFlightDefinitionIdException::forValue($flightDefinitionId);
-        }
-
-        $now = self::now();
-        $announcement = new self();
-        $announcement->id = Uuid::v7();
-        $announcement->type = $type;
-        $announcement->flightDefinitionId = Uuid::fromString($flightDefinitionId);
-        $announcement->checkInCounterStart = $counterRange?->start();
-        $announcement->checkInCounterEnd = $counterRange?->end();
-        $announcement->gateCode = $gateCode?->toString();
-        $announcement->languageCodes = $languages->toStrings();
-        $announcement->status = AnnouncementStatus::PendingPreparation;
-        $announcement->createdAt = $now;
-        $announcement->cancelledAt = null;
-
-        $announcement->recordEvent(new AnnouncementCreated(
-            $announcement->id->toRfc4122(),
-            $type->value,
-            $announcement->flightDefinitionId->toRfc4122(),
-            $languages->toStrings(),
-            $now,
-        ));
-
-        return $announcement;
     }
 
     private static function now(): DateTimeImmutable

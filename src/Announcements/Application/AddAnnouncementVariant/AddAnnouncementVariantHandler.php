@@ -5,9 +5,8 @@ declare(strict_types=1);
 namespace App\Announcements\Application\AddAnnouncementVariant;
 
 use App\Announcements\Application\FlightAnnouncementConfigResult;
-use App\Announcements\Application\Service\AnnouncementAudioAssetValidator;
+use App\Announcements\Application\Service\AnnouncementSegmentsValidator;
 use App\Announcements\Domain\Entity\FlightAnnouncementConfig;
-use App\Announcements\Domain\Enum\AnnouncementVariantSourceType;
 use App\Announcements\Domain\Exception\FlightAnnouncementConfigNotFoundException;
 use App\Announcements\Domain\Exception\InvalidFlightDefinitionIdException;
 use App\Announcements\Domain\Repository\FlightAnnouncementConfigRepositoryInterface;
@@ -22,7 +21,7 @@ final readonly class AddAnnouncementVariantHandler
 {
     public function __construct(
         private FlightAnnouncementConfigRepositoryInterface $repository,
-        private AnnouncementAudioAssetValidator $audioAssetValidator,
+        private AnnouncementSegmentsValidator $segmentsValidator,
         #[Autowire(service: 'event.bus')]
         private MessageBusInterface $eventBus,
     ) {
@@ -31,13 +30,11 @@ final readonly class AddAnnouncementVariantHandler
     public function __invoke(AddAnnouncementVariantCommand $command): FlightAnnouncementConfigResult
     {
         $config = $this->findConfig($command->flightDefinitionId, $command->configId);
-        $this->audioAssetValidator->validate($command->sourceType, $command->audioAssetId);
+        $this->segmentsValidator->validate($command->segments);
         $config->addVariant(
             LanguageCode::fromString($command->languageCode),
             $command->sortOrder,
-            AnnouncementVariantSourceType::from($command->sourceType),
-            $command->audioAssetId,
-            $command->text,
+            $command->segments,
             $command->enabled,
         );
 

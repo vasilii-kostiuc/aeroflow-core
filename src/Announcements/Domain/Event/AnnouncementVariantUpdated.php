@@ -13,7 +13,7 @@ final readonly class AnnouncementVariantUpdated implements DomainEvent
         public string $configId,
         public string $variantId,
         public string $languageCode,
-        public string $sourceType,
+        public string $contentModel,
         /** @var list<string> */
         public array $changedFields,
         public DateTimeImmutable $occurredAt,

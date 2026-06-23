@@ -13,7 +13,7 @@ final readonly class AnnouncementVariantDisabled implements DomainEvent
         public string $configId,
         public string $variantId,
         public string $languageCode,
-        public string $sourceType,
+        public string $contentModel,
         public DateTimeImmutable $occurredAt,
     ) {
     }

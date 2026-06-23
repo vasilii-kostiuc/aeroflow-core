@@ -8,14 +8,14 @@ final readonly class CreateAnnouncementCommand
 {
     /**
      * @param list<string> $languages
+     * @param list<string> $checkInCounterIds
      */
     public function __construct(
         public string $type,
         public string $flightDefinitionId,
         public array $languages,
-        public ?int $checkInCounterStart = null,
-        public ?int $checkInCounterEnd = null,
-        public ?string $gateCode = null,
+        public array $checkInCounterIds = [],
+        public ?string $gateId = null,
     ) {
     }
 }

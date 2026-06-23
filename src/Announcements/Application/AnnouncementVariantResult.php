@@ -4,17 +4,17 @@ declare(strict_types=1);
 
 namespace App\Announcements\Application;
 
+use App\Announcements\Domain\Entity\AnnouncementTemplateSegment;
 use App\Announcements\Domain\Entity\AnnouncementVariant;
 
 final readonly class AnnouncementVariantResult
 {
+    /** @param list<array<string, mixed>> $segments */
     public function __construct(
         public string $id,
         public string $languageCode,
         public int $sortOrder,
-        public string $sourceType,
-        public ?string $audioAssetId,
-        public ?string $text,
+        public array $segments,
         public bool $enabled,
         public string $createdAt,
         public string $updatedAt,
@@ -24,15 +24,16 @@ final readonly class AnnouncementVariantResult
     public static function fromEntity(AnnouncementVariant $variant): self
     {
         return new self(
-            id: $variant->getId()->toRfc4122(),
-            languageCode: $variant->getLanguageCode(),
-            sortOrder: $variant->getSortOrder(),
-            sourceType: $variant->getSourceType()->value,
-            audioAssetId: $variant->getAudioAssetId()?->toRfc4122(),
-            text: $variant->getText(),
-            enabled: $variant->isEnabled(),
-            createdAt: $variant->getCreatedAt()->format(DATE_ATOM),
-            updatedAt: $variant->getUpdatedAt()->format(DATE_ATOM),
+            $variant->getId()->toRfc4122(),
+            $variant->getLanguageCode(),
+            $variant->getSortOrder(),
+            array_map(static fn (AnnouncementTemplateSegment $segment): array => [
+                'id' => $segment->getId()->toRfc4122(),
+                ...$segment->toArray(),
+            ], $variant->getSegments()),
+            $variant->isEnabled(),
+            $variant->getCreatedAt()->format(DATE_ATOM),
+            $variant->getUpdatedAt()->format(DATE_ATOM),
         );
     }
 }

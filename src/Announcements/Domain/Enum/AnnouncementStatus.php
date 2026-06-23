@@ -7,5 +7,6 @@ namespace App\Announcements\Domain\Enum;
 enum AnnouncementStatus: string
 {
     case PendingPreparation = 'pending_preparation';
+    case Prepared = 'prepared';
     case Cancelled = 'cancelled';
 }

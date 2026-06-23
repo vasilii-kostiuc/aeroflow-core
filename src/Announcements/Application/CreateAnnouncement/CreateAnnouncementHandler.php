@@ -6,15 +6,19 @@ namespace App\Announcements\Application\CreateAnnouncement;
 
 use App\Announcements\Application\AnnouncementResult;
 use App\Announcements\Application\Port\FlightOperations\FlightDefinitionLookupInterface;
+use App\Announcements\Application\Port\FlightOperations\OperationalResourceLookupInterface;
+use App\Announcements\Application\Service\AnnouncementTemplateResolver;
 use App\Announcements\Domain\Entity\Announcement;
 use App\Announcements\Domain\Enum\AnnouncementType;
+use App\Announcements\Domain\Enum\FlightAnnouncementType;
+use App\Announcements\Domain\Exception\AnnouncementConfigurationNotReadyException;
 use App\Announcements\Domain\Exception\FlightDefinitionNotFoundException;
 use App\Announcements\Domain\Exception\InactiveFlightDefinitionException;
 use App\Announcements\Domain\Exception\InvalidFlightDefinitionIdException;
+use App\Announcements\Domain\Exception\OperationalResourceUnavailableException;
 use App\Announcements\Domain\Repository\AnnouncementRepositoryInterface;
+use App\Announcements\Domain\Repository\FlightAnnouncementConfigRepositoryInterface;
 use App\Announcements\Domain\ValueObject\AnnouncementLanguages;
-use App\Announcements\Domain\ValueObject\CheckInCounterRange;
-use App\Announcements\Domain\ValueObject\GateCode;
 use App\Shared\Domain\ValueObject\LanguageCode;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -26,7 +30,10 @@ final readonly class CreateAnnouncementHandler
 {
     public function __construct(
         private AnnouncementRepositoryInterface $repository,
+        private FlightAnnouncementConfigRepositoryInterface $configs,
         private FlightDefinitionLookupInterface $flightDefinitions,
+        private OperationalResourceLookupInterface $resources,
+        private AnnouncementTemplateResolver $resolver,
         #[Autowire(service: 'event.bus')]
         private MessageBusInterface $eventBus,
     ) {
@@ -37,38 +44,48 @@ final readonly class CreateAnnouncementHandler
         if (!Uuid::isValid($command->flightDefinitionId)) {
             throw InvalidFlightDefinitionIdException::forValue($command->flightDefinitionId);
         }
-
-        $flightDefinition = $this->flightDefinitions->findById(Uuid::fromString($command->flightDefinitionId));
-        if ($flightDefinition === null) {
+        $flightId = Uuid::fromString($command->flightDefinitionId);
+        $flight = $this->flightDefinitions->findById($flightId);
+        if ($flight === null) {
             throw FlightDefinitionNotFoundException::withId($command->flightDefinitionId);
         }
-        if (!$flightDefinition->active) {
+        if (!$flight->active) {
             throw InactiveFlightDefinitionException::withId($command->flightDefinitionId);
         }
 
+        $type = AnnouncementType::from($command->type);
+        $config = $this->configs->findOneForFlightAndType($flightId, FlightAnnouncementType::from($type->value))
+            ?? throw AnnouncementConfigurationNotReadyException::withErrors(['configuration_not_found']);
         $languages = AnnouncementLanguages::fromCodes(...array_map(
             static fn (string $code): LanguageCode => LanguageCode::fromString($code),
             $command->languages,
         ));
-        $type = AnnouncementType::from($command->type);
-        $announcement = match ($type) {
-            AnnouncementType::CheckInOpening => Announcement::openCheckIn(
-                $command->flightDefinitionId,
-                CheckInCounterRange::between((int) $command->checkInCounterStart, (int) $command->checkInCounterEnd),
-                $languages,
-            ),
-            AnnouncementType::CheckInClosing => Announcement::closeCheckIn(
-                $command->flightDefinitionId,
-                CheckInCounterRange::between((int) $command->checkInCounterStart, (int) $command->checkInCounterEnd),
-                $languages,
-            ),
-            AnnouncementType::BoardingInvitation => Announcement::inviteToBoard(
-                $command->flightDefinitionId,
-                GateCode::fromString((string) $command->gateCode),
-                $languages,
-            ),
-            AnnouncementType::Arrival => Announcement::announceArrival($command->flightDefinitionId, $languages),
-        };
+
+        $counters = [];
+        $gate = null;
+        if (in_array($type, [AnnouncementType::CheckInOpening, AnnouncementType::CheckInClosing], true)) {
+            if ($command->checkInCounterIds === [] || count($command->checkInCounterIds) !== count(array_unique($command->checkInCounterIds))) {
+                throw OperationalResourceUnavailableException::counters($command->checkInCounterIds);
+            }
+            $counters = $this->resources->resolveActiveCheckInCounters($command->checkInCounterIds);
+            if (count($counters) !== count($command->checkInCounterIds)) {
+                throw OperationalResourceUnavailableException::counters($command->checkInCounterIds);
+            }
+        } elseif ($type === AnnouncementType::BoardingInvitation) {
+            if ($command->gateId === null || ($gate = $this->resources->resolveActiveGate($command->gateId)) === null) {
+                throw OperationalResourceUnavailableException::gate((string) $command->gateId);
+            }
+        }
+
+        $audioSequence = $this->resolver->resolve($config, $languages->toStrings(), $counters, $gate);
+        $announcement = Announcement::createPrepared(
+            $type,
+            $command->flightDefinitionId,
+            $languages,
+            array_map(static fn ($counter): array => ['id' => $counter->id, 'code' => $counter->code], $counters),
+            $gate === null ? null : ['id' => $gate->id, 'code' => $gate->code],
+            $audioSequence,
+        );
         $this->repository->save($announcement);
         foreach ($announcement->pullEvents() as $event) {
             $this->eventBus->dispatch($event);

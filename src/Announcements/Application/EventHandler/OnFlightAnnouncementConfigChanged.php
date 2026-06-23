@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Announcements\Application\EventHandler;
 
+use App\Announcements\Domain\Event\AnnouncementTemplateSegmentAdded;
+use App\Announcements\Domain\Event\AnnouncementTemplateSegmentRemoved;
+use App\Announcements\Domain\Event\AnnouncementTemplateSegmentUpdated;
 use App\Announcements\Domain\Event\AnnouncementVariantAdded;
 use App\Announcements\Domain\Event\AnnouncementVariantDisabled;
 use App\Announcements\Domain\Event\AnnouncementVariantEnabled;
@@ -59,6 +62,21 @@ final class OnFlightAnnouncementConfigChanged
 
     #[AsMessageHandler(bus: 'event.bus')]
     public function variantRemoved(AnnouncementVariantRemoved $event): void
+    {
+    }
+
+    #[AsMessageHandler(bus: 'event.bus')]
+    public function segmentAdded(AnnouncementTemplateSegmentAdded $event): void
+    {
+    }
+
+    #[AsMessageHandler(bus: 'event.bus')]
+    public function segmentUpdated(AnnouncementTemplateSegmentUpdated $event): void
+    {
+    }
+
+    #[AsMessageHandler(bus: 'event.bus')]
+    public function segmentRemoved(AnnouncementTemplateSegmentRemoved $event): void
     {
     }
 }

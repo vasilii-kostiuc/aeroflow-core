@@ -48,6 +48,12 @@ services:
     App\FlightOperations\Domain\Repository\AirportRepositoryInterface:
         alias: App\FlightOperations\Infrastructure\Persistence\Doctrine\AirportRepository
 
+    App\FlightOperations\Domain\Repository\CheckInCounterRepositoryInterface:
+        alias: App\FlightOperations\Infrastructure\Persistence\Doctrine\CheckInCounterRepository
+
+    App\FlightOperations\Domain\Repository\GateRepositoryInterface:
+        alias: App\FlightOperations\Infrastructure\Persistence\Doctrine\GateRepository
+
     App\FlightOperations\Application\ListAirports\AirportListQueryInterface:
         alias: App\FlightOperations\Infrastructure\Persistence\Doctrine\DbalAirportListQuery
 
@@ -60,11 +66,17 @@ services:
     App\Announcements\Application\Port\FlightOperations\FlightDefinitionLookupInterface:
         alias: App\Announcements\Infrastructure\Integration\FlightOperations\FlightOperationsFlightDefinitionLookup
 
-    App\Announcements\Application\Port\AudioCatalog\AudioAssetAvailabilityInterface:
-        alias: App\Announcements\Infrastructure\Integration\AudioCatalog\AudioCatalogAudioAssetAvailability
+    App\Announcements\Application\Port\AudioCatalog\AudioPromptLookupInterface:
+        alias: App\Announcements\Infrastructure\Integration\AudioCatalog\AudioCatalogAudioPromptLookup
+
+    App\Announcements\Application\Port\FlightOperations\OperationalResourceLookupInterface:
+        alias: App\Announcements\Infrastructure\Integration\FlightOperations\FlightOperationsOperationalResourceLookup
 
     App\AudioCatalog\Domain\Repository\AudioAssetRepositoryInterface:
         alias: App\AudioCatalog\Infrastructure\Persistence\Doctrine\AudioAssetRepository
+
+    App\AudioCatalog\Domain\Repository\AudioPromptRepositoryInterface:
+        alias: App\AudioCatalog\Infrastructure\Persistence\Doctrine\AudioPromptRepository
 
     App\AudioCatalog\Application\Storage\AudioAssetStorageInterface:
         alias: App\AudioCatalog\Infrastructure\Storage\LocalAudioAssetStorage

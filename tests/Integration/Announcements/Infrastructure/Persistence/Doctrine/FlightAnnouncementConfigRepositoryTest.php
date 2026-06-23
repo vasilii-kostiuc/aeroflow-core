@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Tests\Integration\Announcements\Infrastructure\Persistence\Doctrine;
 
 use App\Announcements\Domain\Entity\FlightAnnouncementConfig;
-use App\Announcements\Domain\Enum\AnnouncementVariantSourceType;
 use App\Announcements\Domain\Enum\FlightAnnouncementType;
 use App\Announcements\Domain\Repository\FlightAnnouncementConfigRepositoryInterface;
 use App\AudioCatalog\Domain\Entity\AudioAsset;
@@ -48,17 +47,13 @@ final class FlightAnnouncementConfigRepositoryTest extends KernelTestCase
         $config->addVariant(
             LanguageCode::fromString('en'),
             2,
-            AnnouncementVariantSourceType::AudioAsset,
-            $asset->getId()->toRfc4122(),
-            null,
+            [['sortOrder' => 1, 'type' => 'audio_asset', 'audioAssetId' => $asset->getId()->toRfc4122()]],
             true,
         );
         $config->addVariant(
             LanguageCode::fromString('ro-MD'),
             1,
-            AnnouncementVariantSourceType::Text,
-            null,
-            'Înregistrarea este deschisă.',
+            [['sortOrder' => 1, 'type' => 'text', 'text' => 'Înregistrarea este deschisă.']],
             true,
         );
 
@@ -70,6 +65,6 @@ final class FlightAnnouncementConfigRepositoryTest extends KernelTestCase
             static fn ($variant): string => $variant->getLanguageCode(),
             $persisted->getVariants(),
         ));
-        self::assertSame($asset->getId()->toRfc4122(), $persisted->getVariants()[1]->getAudioAssetId()?->toRfc4122());
+        self::assertSame($asset->getId()->toRfc4122(), $persisted->getVariants()[1]->getSegments()[0]->getAudioAssetId()?->toRfc4122());
     }
 }

@@ -30,22 +30,19 @@ final class FlightAnnouncementConfigApiTest extends WebTestCase
         $this->json($client, 'POST', sprintf('/api/v1/admin/flight-definitions/%s/announcement-configs/%s/variants', $flightId, $configId), [
             'languageCode' => 'ro-MD',
             'sortOrder' => 1,
-            'sourceType' => 'text',
-            'audioAssetId' => null,
-            'text' => 'Înregistrarea este deschisă.',
+            'segments' => [['sortOrder' => 1, 'type' => 'text', 'text' => 'Înregistrarea este deschisă.']],
             'enabled' => true,
         ]);
         self::assertResponseStatusCodeSame(201);
         $config = $this->response($client)['data'];
-        self::assertTrue($config['isValidForDispatcher']);
+        self::assertFalse($config['isValidForDispatcher']);
+        self::assertContains('text_segment_requires_tts', $config['validationErrors']);
         $variantId = $config['variants'][0]['id'];
 
         $this->json($client, 'PATCH', sprintf('/api/v1/admin/flight-definitions/%s/announcement-configs/%s/variants/%s', $flightId, $configId, $variantId), [
             'languageCode' => 'ro-MD',
             'sortOrder' => 2,
-            'sourceType' => 'text',
-            'audioAssetId' => null,
-            'text' => 'Text actualizat.',
+            'segments' => [['sortOrder' => 1, 'type' => 'text', 'text' => 'Text actualizat.']],
             'enabled' => false,
         ]);
         self::assertResponseIsSuccessful();
@@ -70,9 +67,7 @@ final class FlightAnnouncementConfigApiTest extends WebTestCase
         $this->json($client, 'POST', sprintf('/api/v1/admin/flight-definitions/%s/announcement-configs/%s/variants', $flightId, $configId), [
             'languageCode' => 'en',
             'sortOrder' => 1,
-            'sourceType' => 'audio_asset',
-            'audioAssetId' => $asset['id'],
-            'text' => null,
+            'segments' => [['sortOrder' => 1, 'type' => 'audio_asset', 'audioAssetId' => $asset['id']]],
             'enabled' => true,
         ]);
         self::assertResponseStatusCodeSame(201);
@@ -117,9 +112,7 @@ final class FlightAnnouncementConfigApiTest extends WebTestCase
         $this->json($client, 'POST', sprintf('/api/v1/admin/flight-definitions/%s/announcement-configs/%s/variants', $flightId, $configId), [
             'languageCode' => 'en',
             'sortOrder' => 1,
-            'sourceType' => 'audio_asset',
-            'audioAssetId' => '01900000-0000-7000-8000-000000000099',
-            'text' => null,
+            'segments' => [['sortOrder' => 1, 'type' => 'audio_asset', 'audioAssetId' => '01900000-0000-7000-8000-000000000099']],
             'enabled' => true,
         ]);
         self::assertResponseStatusCodeSame(422);

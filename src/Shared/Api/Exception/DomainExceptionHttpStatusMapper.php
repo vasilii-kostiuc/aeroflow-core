@@ -10,11 +10,16 @@ use App\Announcements\Domain\Exception\AudioAssetUnavailableException;
 use App\Announcements\Domain\Exception\DuplicateFlightAnnouncementConfigException;
 use App\Announcements\Domain\Exception\FlightAnnouncementConfigNotFoundException;
 use App\Announcements\Domain\Exception\FlightDefinitionNotFoundException as AnnouncementFlightDefinitionNotFoundException;
+use App\AudioCatalog\Domain\Exception\AudioPromptAssetUnavailableException;
+use App\AudioCatalog\Domain\Exception\AudioPromptNotFoundException;
+use App\AudioCatalog\Domain\Exception\DuplicateAudioPromptException;
 use App\AudioCatalog\Domain\Exception\InvalidAudioAssetUploadException;
 use App\FlightOperations\Domain\Exception\AirportNotFoundException;
 use App\FlightOperations\Domain\Exception\DuplicateAirportException;
 use App\FlightOperations\Domain\Exception\DuplicateFlightDefinitionException;
+use App\FlightOperations\Domain\Exception\DuplicateOperationalResourceException;
 use App\FlightOperations\Domain\Exception\FlightDefinitionNotFoundException as FlightOperationsFlightDefinitionNotFoundException;
+use App\FlightOperations\Domain\Exception\OperationalResourceNotFoundException;
 use App\Shared\Domain\DomainException;
 use App\UserAccess\Domain\Exception\InvalidCredentialsException;
 use App\UserAccess\Domain\Exception\InvalidRefreshTokenException;
@@ -41,6 +46,11 @@ final class DomainExceptionHttpStatusMapper
         AnnouncementVariantNotFoundException::class => Response::HTTP_NOT_FOUND,
         AudioAssetUnavailableException::class => Response::HTTP_UNPROCESSABLE_ENTITY,
         InvalidAudioAssetUploadException::class => Response::HTTP_UNPROCESSABLE_ENTITY,
+        AudioPromptAssetUnavailableException::class => Response::HTTP_UNPROCESSABLE_ENTITY,
+        AudioPromptNotFoundException::class => Response::HTTP_NOT_FOUND,
+        DuplicateAudioPromptException::class => Response::HTTP_CONFLICT,
+        DuplicateOperationalResourceException::class => Response::HTTP_CONFLICT,
+        OperationalResourceNotFoundException::class => Response::HTTP_NOT_FOUND,
     ];
 
     public function statusFor(DomainException $exception): int

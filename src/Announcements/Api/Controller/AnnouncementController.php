@@ -4,16 +4,15 @@ declare(strict_types=1);
 
 namespace App\Announcements\Api\Controller;
 
-use App\Announcements\Api\Request\AnnouncementLanguagesRequest;
 use App\Announcements\Api\Request\CreateAnnouncementRequest;
 use App\Announcements\Application\AnnouncementResult;
 use App\Announcements\Application\CancelAnnouncement\CancelAnnouncementCommand;
-use App\Announcements\Application\ChangeAnnouncementLanguages\ChangeAnnouncementLanguagesCommand;
 use App\Announcements\Application\CreateAnnouncement\CreateAnnouncementCommand;
 use App\Announcements\Application\GetAnnouncement\GetAnnouncementQuery;
 use App\Announcements\Application\ListAnnouncements\ListAnnouncementsQuery;
 use App\Shared\Api\Response\ApiResponse;
 use LogicException;
+use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
 use Symfony\Component\Messenger\MessageBusInterface;
@@ -21,6 +20,7 @@ use Symfony\Component\Messenger\Stamp\HandledStamp;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[Route('/announcements')]
+#[OA\Tag(name: 'Announcements')]
 final class AnnouncementController
 {
     public function __construct(private MessageBusInterface $messageBus)
@@ -34,9 +34,8 @@ final class AnnouncementController
             $request->type,
             $request->flightDefinitionId,
             $request->languages,
-            $request->checkInCounterStart,
-            $request->checkInCounterEnd,
-            $request->gateCode,
+            $request->checkInCounterIds,
+            $request->gateId,
         )));
     }
 
@@ -52,12 +51,6 @@ final class AnnouncementController
     public function get(string $id): JsonResponse
     {
         return ApiResponse::success($this->one(new GetAnnouncementQuery($id)));
-    }
-
-    #[Route('/{id}/languages', methods: ['PUT'])]
-    public function languages(string $id, #[MapRequestPayload] AnnouncementLanguagesRequest $request): JsonResponse
-    {
-        return ApiResponse::success($this->one(new ChangeAnnouncementLanguagesCommand($id, $request->languages)));
     }
 
     #[Route('/{id}/cancel', methods: ['POST'])]

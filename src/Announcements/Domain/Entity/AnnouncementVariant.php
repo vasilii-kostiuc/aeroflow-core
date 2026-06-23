@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App\Announcements\Domain\Entity;
 
-use App\Announcements\Domain\Enum\AnnouncementVariantSourceType;
-use App\Announcements\Domain\Exception\InvalidAnnouncementVariantSourceException;
 use App\Shared\Domain\ValueObject\LanguageCode;
 use DateTimeImmutable;
 use DateTimeZone;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use InvalidArgumentException;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
 
@@ -31,17 +32,12 @@ final class AnnouncementVariant
     #[ORM\Column]
     private int $sortOrder;
 
-    #[ORM\Column(length: 16, enumType: AnnouncementVariantSourceType::class)]
-    private AnnouncementVariantSourceType $sourceType;
-
-    #[ORM\Column(type: UuidType::NAME, nullable: true)]
-    private ?Uuid $audioAssetId;
-
-    #[ORM\Column(type: 'text', nullable: true)]
-    private ?string $text;
-
     #[ORM\Column]
     private bool $enabled;
+
+    /** @var Collection<int, AnnouncementTemplateSegment> */
+    #[ORM\OneToMany(mappedBy: 'variant', targetEntity: AnnouncementTemplateSegment::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
+    private Collection $segments;
 
     #[ORM\Column]
     private DateTimeImmutable $createdAt;
@@ -51,55 +47,34 @@ final class AnnouncementVariant
 
     private function __construct()
     {
+        $this->segments = new ArrayCollection();
     }
 
-    public static function create(
-        FlightAnnouncementConfig $config,
-        LanguageCode $languageCode,
-        int $sortOrder,
-        AnnouncementVariantSourceType $sourceType,
-        ?string $audioAssetId,
-        ?string $text,
-        bool $enabled,
-    ): self {
+    /** @param list<array{sortOrder:int,type:string,audioAssetId?:?string,slot?:?string,durationMs?:?int,text?:?string}> $segments */
+    public static function create(FlightAnnouncementConfig $config, LanguageCode $languageCode, int $sortOrder, array $segments, bool $enabled): self
+    {
         $variant = new self();
         $variant->id = Uuid::v7();
         $variant->config = $config;
         $variant->languageCode = $languageCode->toString();
+        $variant->sortOrder = $sortOrder;
+        $variant->enabled = $enabled;
         $variant->createdAt = self::now();
-        $variant->applyDetails($sortOrder, $sourceType, $audioAssetId, $text, $enabled);
+        $variant->replaceSegments($segments);
 
         return $variant;
     }
 
-    public function update(
-        LanguageCode $languageCode,
-        int $sortOrder,
-        AnnouncementVariantSourceType $sourceType,
-        ?string $audioAssetId,
-        ?string $text,
-        bool $enabled,
-    ): bool {
-        $previous = [
-            $this->languageCode,
-            $this->sortOrder,
-            $this->sourceType,
-            $this->audioAssetId?->toRfc4122(),
-            $this->text,
-            $this->enabled,
-        ];
-
+    /** @param list<array{sortOrder:int,type:string,audioAssetId?:?string,slot?:?string,durationMs?:?int,text?:?string}> $segments */
+    public function update(LanguageCode $languageCode, int $sortOrder, array $segments, bool $enabled): bool
+    {
+        $before = [$this->languageCode, $this->sortOrder, $this->enabled, array_map(fn (AnnouncementTemplateSegment $s): array => $s->toArray(), $this->getSegments())];
         $this->languageCode = $languageCode->toString();
-        $this->applyDetails($sortOrder, $sourceType, $audioAssetId, $text, $enabled);
+        $this->sortOrder = $sortOrder;
+        $this->enabled = $enabled;
+        $this->replaceSegments($segments);
 
-        return $previous !== [
-            $this->languageCode,
-            $this->sortOrder,
-            $this->sourceType,
-            $this->audioAssetId?->toRfc4122(),
-            $this->text,
-            $this->enabled,
-        ];
+        return $before !== [$this->languageCode, $this->sortOrder, $this->enabled, array_map(fn (AnnouncementTemplateSegment $s): array => $s->toArray(), $this->getSegments())];
     }
 
     public function getId(): Uuid
@@ -117,21 +92,6 @@ final class AnnouncementVariant
         return $this->sortOrder;
     }
 
-    public function getSourceType(): AnnouncementVariantSourceType
-    {
-        return $this->sourceType;
-    }
-
-    public function getAudioAssetId(): ?Uuid
-    {
-        return $this->audioAssetId;
-    }
-
-    public function getText(): ?string
-    {
-        return $this->text;
-    }
-
     public function isEnabled(): bool
     {
         return $this->enabled;
@@ -147,39 +107,40 @@ final class AnnouncementVariant
         return $this->updatedAt;
     }
 
-    private function applyDetails(
-        int $sortOrder,
-        AnnouncementVariantSourceType $sourceType,
-        ?string $audioAssetId,
-        ?string $text,
-        bool $enabled,
-    ): void {
-        if ($sortOrder < 1) {
-            throw InvalidAnnouncementVariantSourceException::invalidSortOrder();
+    /** @return list<AnnouncementTemplateSegment> */
+    public function getSegments(): array
+    {
+        $segments = $this->segments->toArray();
+        usort($segments, static fn (AnnouncementTemplateSegment $a, AnnouncementTemplateSegment $b): int => $a->getSortOrder() <=> $b->getSortOrder());
+
+        return $segments;
+    }
+
+    public function requiresTts(): bool
+    {
+        foreach ($this->segments as $segment) {
+            if ($segment->getType()->value === 'text') {
+                return true;
+            }
         }
 
-        $normalizedText = $text === null ? null : trim($text);
-        $normalizedAudioAssetId = $audioAssetId === null ? null : trim($audioAssetId);
+        return false;
+    }
 
-        if (AnnouncementVariantSourceType::AudioAsset === $sourceType) {
-            if ($normalizedAudioAssetId === null || !Uuid::isValid($normalizedAudioAssetId)) {
-                throw InvalidAnnouncementVariantSourceException::missingAudioAsset();
-            }
-
-            $this->audioAssetId = Uuid::fromString($normalizedAudioAssetId);
-            $this->text = null;
-        } else {
-            if ($normalizedText === null || $normalizedText === '') {
-                throw InvalidAnnouncementVariantSourceException::missingText();
-            }
-
-            $this->audioAssetId = null;
-            $this->text = $normalizedText;
+    /** @param list<array{sortOrder:int,type:string,audioAssetId?:?string,slot?:?string,durationMs?:?int,text?:?string}> $segments */
+    private function replaceSegments(array $segments): void
+    {
+        if ($this->sortOrder < 1 || $segments === []) {
+            throw new InvalidArgumentException('Variant requires a positive sort order and at least one segment.');
         }
-
-        $this->sortOrder = $sortOrder;
-        $this->sourceType = $sourceType;
-        $this->enabled = $enabled;
+        $orders = array_column($segments, 'sortOrder');
+        if (count($orders) !== count(array_unique($orders))) {
+            throw new InvalidArgumentException('Segment sort orders must be unique.');
+        }
+        $this->segments->clear();
+        foreach ($segments as $data) {
+            $this->segments->add(AnnouncementTemplateSegment::create($this, $this->config->getAnnouncementType(), $data));
+        }
         $this->updatedAt = self::now();
     }
 

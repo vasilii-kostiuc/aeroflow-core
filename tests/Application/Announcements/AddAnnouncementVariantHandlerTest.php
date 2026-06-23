@@ -6,8 +6,8 @@ namespace App\Tests\Application\Announcements;
 
 use App\Announcements\Application\AddAnnouncementVariant\AddAnnouncementVariantCommand;
 use App\Announcements\Application\AddAnnouncementVariant\AddAnnouncementVariantHandler;
-use App\Announcements\Application\Port\AudioCatalog\AudioAssetAvailabilityInterface;
-use App\Announcements\Application\Service\AnnouncementAudioAssetValidator;
+use App\Announcements\Application\Port\AudioCatalog\AudioPromptLookupInterface;
+use App\Announcements\Application\Service\AnnouncementSegmentsValidator;
 use App\Announcements\Domain\Entity\FlightAnnouncementConfig;
 use App\Announcements\Domain\Enum\FlightAnnouncementType;
 use App\Announcements\Domain\Exception\AudioAssetUnavailableException;
@@ -33,12 +33,12 @@ final class AddAnnouncementVariantHandlerTest extends TestCase
         $configs->method('findById')->willReturn($config);
         $configs->expects(self::never())->method('save');
 
-        $assets = $this->createStub(AudioAssetAvailabilityInterface::class);
-        $assets->method('isAvailable')->willReturn(false);
+        $assets = $this->createStub(AudioPromptLookupInterface::class);
+        $assets->method('isActiveAsset')->willReturn(false);
 
         $handler = new AddAnnouncementVariantHandler(
             $configs,
-            new AnnouncementAudioAssetValidator($assets),
+            new AnnouncementSegmentsValidator($assets),
             $this->createStub(MessageBusInterface::class),
         );
 
@@ -48,9 +48,7 @@ final class AddAnnouncementVariantHandlerTest extends TestCase
             $config->getId()->toRfc4122(),
             'ro-MD',
             1,
-            'audio_asset',
-            Uuid::v7()->toRfc4122(),
-            null,
+            [['sortOrder' => 1, 'type' => 'audio_asset', 'audioAssetId' => Uuid::v7()->toRfc4122()]],
             true,
         ));
     }

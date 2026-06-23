@@ -10,8 +10,11 @@ use App\Announcements\Application\CreateFlightAnnouncementConfig\CreateFlightAnn
 use App\Announcements\Application\CreateFlightAnnouncementConfig\CreateFlightAnnouncementConfigHandler;
 use App\Announcements\Application\ListFlightAnnouncementConfigs\ListFlightAnnouncementConfigsHandler;
 use App\Announcements\Application\ListFlightAnnouncementConfigs\ListFlightAnnouncementConfigsQuery;
+use App\Announcements\Application\Port\AudioCatalog\AudioPromptLookupInterface;
 use App\Announcements\Application\Port\FlightOperations\FlightDefinitionLookupInterface;
 use App\Announcements\Application\Port\FlightOperations\FlightDefinitionSnapshot;
+use App\Announcements\Application\Port\FlightOperations\OperationalResourceLookupInterface;
+use App\Announcements\Application\Service\AnnouncementTemplateResolver;
 use App\Announcements\Application\UpdateFlightAnnouncementConfig\UpdateFlightAnnouncementConfigCommand;
 use App\Announcements\Application\UpdateFlightAnnouncementConfig\UpdateFlightAnnouncementConfigHandler;
 use App\Announcements\Domain\Entity\FlightAnnouncementConfig;
@@ -32,19 +35,30 @@ final class FlightDefinitionPortHandlersTest extends TestCase
     public function testCreatesAnnouncementForActiveFlightDefinition(): void
     {
         $flightId = Uuid::v7();
-        $lookup = $this->lookup(new FlightDefinitionSnapshot(true, FlightDirection::Departure));
+        $lookup = $this->lookup(new FlightDefinitionSnapshot(true, FlightDirection::Arrival));
         $announcements = $this->createMock(AnnouncementRepositoryInterface::class);
         $announcements->expects(self::once())->method('save');
+        $config = FlightAnnouncementConfig::create($flightId->toRfc4122(), FlightAnnouncementType::Arrival, true, null);
+        $assetId = Uuid::v7()->toRfc4122();
+        $config->addVariant(\App\Shared\Domain\ValueObject\LanguageCode::fromString('en'), 1, [
+            ['sortOrder' => 1, 'type' => 'audio_asset', 'audioAssetId' => $assetId],
+        ], true);
+        $configs = $this->createStub(FlightAnnouncementConfigRepositoryInterface::class);
+        $configs->method('findOneForFlightAndType')->willReturn($config);
+        $audio = $this->createStub(AudioPromptLookupInterface::class);
+        $audio->method('isActiveAsset')->willReturn(true);
 
         $result = new CreateAnnouncementHandler(
             $announcements,
+            $configs,
             $lookup,
+            $this->createStub(OperationalResourceLookupInterface::class),
+            new AnnouncementTemplateResolver($audio),
             $this->messageBus(),
         )(new CreateAnnouncementCommand(
-            'boarding_invitation',
+            'arrival',
             $flightId->toRfc4122(),
-            ['ro', 'en'],
-            gateCode: 'A12',
+            ['en'],
         ));
 
         self::assertSame($flightId->toRfc4122(), $result->flightDefinitionId);
@@ -54,7 +68,10 @@ final class FlightDefinitionPortHandlersTest extends TestCase
     {
         $handler = new CreateAnnouncementHandler(
             $this->createStub(AnnouncementRepositoryInterface::class),
+            $this->createStub(FlightAnnouncementConfigRepositoryInterface::class),
             $this->lookup(null),
+            $this->createStub(OperationalResourceLookupInterface::class),
+            new AnnouncementTemplateResolver($this->createStub(AudioPromptLookupInterface::class)),
             $this->createStub(MessageBusInterface::class),
         );
 
@@ -71,7 +88,10 @@ final class FlightDefinitionPortHandlersTest extends TestCase
     {
         $handler = new CreateAnnouncementHandler(
             $this->createStub(AnnouncementRepositoryInterface::class),
+            $this->createStub(FlightAnnouncementConfigRepositoryInterface::class),
             $this->lookup(new FlightDefinitionSnapshot(false, FlightDirection::Departure)),
+            $this->createStub(OperationalResourceLookupInterface::class),
+            new AnnouncementTemplateResolver($this->createStub(AudioPromptLookupInterface::class)),
             $this->createStub(MessageBusInterface::class),
         );
 
@@ -81,7 +101,7 @@ final class FlightDefinitionPortHandlersTest extends TestCase
             'boarding_invitation',
             Uuid::v7()->toRfc4122(),
             ['en'],
-            gateCode: 'A12',
+            gateId: Uuid::v7()->toRfc4122(),
         ));
     }
 

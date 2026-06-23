@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Announcements\Domain\Entity;
 
-use App\Announcements\Domain\Enum\AnnouncementVariantSourceType;
 use App\Announcements\Domain\Enum\FlightAnnouncementType;
+use App\Announcements\Domain\Event\AnnouncementTemplateSegmentAdded;
+use App\Announcements\Domain\Event\AnnouncementTemplateSegmentRemoved;
+use App\Announcements\Domain\Event\AnnouncementTemplateSegmentUpdated;
 use App\Announcements\Domain\Event\AnnouncementVariantAdded;
 use App\Announcements\Domain\Event\AnnouncementVariantDisabled;
 use App\Announcements\Domain\Event\AnnouncementVariantEnabled;
@@ -137,12 +139,11 @@ final class FlightAnnouncementConfig extends AggregateRoot
         return true;
     }
 
+    /** @param list<array{sortOrder:int,type:string,audioAssetId?:?string,slot?:?string,durationMs?:?int,text?:?string}> $segments */
     public function addVariant(
         LanguageCode $languageCode,
         int $sortOrder,
-        AnnouncementVariantSourceType $sourceType,
-        ?string $audioAssetId,
-        ?string $text,
+        array $segments,
         bool $enabled,
     ): AnnouncementVariant {
         $this->assertLanguageIsUnique($languageCode, $enabled);
@@ -151,9 +152,7 @@ final class FlightAnnouncementConfig extends AggregateRoot
             $this,
             $languageCode,
             $sortOrder,
-            $sourceType,
-            $audioAssetId,
-            $text,
+            $segments,
             $enabled,
         );
 
@@ -163,21 +162,29 @@ final class FlightAnnouncementConfig extends AggregateRoot
             $this->id->toRfc4122(),
             $variant->getId()->toRfc4122(),
             $languageCode->toString(),
-            $sourceType->value,
+            'segments',
             $enabled,
             $this->updatedAt,
         ));
+        foreach ($variant->getSegments() as $segment) {
+            $this->recordEvent(new AnnouncementTemplateSegmentAdded(
+                $this->id->toRfc4122(),
+                $variant->getId()->toRfc4122(),
+                $segment->getId()->toRfc4122(),
+                $segment->getType()->value,
+                $this->updatedAt,
+            ));
+        }
 
         return $variant;
     }
 
+    /** @param list<array{sortOrder:int,type:string,audioAssetId?:?string,slot?:?string,durationMs?:?int,text?:?string}> $segments */
     public function updateVariant(
         string $variantId,
         LanguageCode $languageCode,
         int $sortOrder,
-        AnnouncementVariantSourceType $sourceType,
-        ?string $audioAssetId,
-        ?string $text,
+        array $segments,
         bool $enabled,
     ): AnnouncementVariant {
         $variant = $this->findVariantOrFail($variantId);
@@ -185,19 +192,15 @@ final class FlightAnnouncementConfig extends AggregateRoot
         $previous = [
             'languageCode' => $variant->getLanguageCode(),
             'sortOrder' => $variant->getSortOrder(),
-            'sourceType' => $variant->getSourceType()->value,
-            'audioAssetId' => $variant->getAudioAssetId()?->toRfc4122(),
-            'text' => $variant->getText(),
+            'segments' => array_map(static fn (AnnouncementTemplateSegment $segment): array => $segment->toArray(), $variant->getSegments()),
             'enabled' => $variant->isEnabled(),
         ];
 
-        if ($variant->update($languageCode, $sortOrder, $sourceType, $audioAssetId, $text, $enabled)) {
+        if ($variant->update($languageCode, $sortOrder, $segments, $enabled)) {
             $current = [
                 'languageCode' => $variant->getLanguageCode(),
                 'sortOrder' => $variant->getSortOrder(),
-                'sourceType' => $variant->getSourceType()->value,
-                'audioAssetId' => $variant->getAudioAssetId()?->toRfc4122(),
-                'text' => $variant->getText(),
+                'segments' => array_map(static fn (AnnouncementTemplateSegment $segment): array => $segment->toArray(), $variant->getSegments()),
                 'enabled' => $variant->isEnabled(),
             ];
             $this->updatedAt = self::now();
@@ -205,7 +208,7 @@ final class FlightAnnouncementConfig extends AggregateRoot
                 $this->id->toRfc4122(),
                 $variant->getId()->toRfc4122(),
                 $variant->getLanguageCode(),
-                $variant->getSourceType()->value,
+                'segments',
                 array_keys(array_filter(
                     $current,
                     static fn (mixed $value, string $field): bool => $previous[$field] !== $value,
@@ -219,7 +222,16 @@ final class FlightAnnouncementConfig extends AggregateRoot
                     $this->id->toRfc4122(),
                     $variant->getId()->toRfc4122(),
                     $variant->getLanguageCode(),
-                    $variant->getSourceType()->value,
+                    'segments',
+                    $this->updatedAt,
+                ));
+            }
+            foreach ($variant->getSegments() as $segment) {
+                $this->recordEvent(new AnnouncementTemplateSegmentUpdated(
+                    $this->id->toRfc4122(),
+                    $variant->getId()->toRfc4122(),
+                    $segment->getId()->toRfc4122(),
+                    $segment->getType()->value,
                     $this->updatedAt,
                 ));
             }
@@ -231,6 +243,7 @@ final class FlightAnnouncementConfig extends AggregateRoot
     public function removeVariant(string $variantId): bool
     {
         $variant = $this->findVariantOrFail($variantId);
+        $segments = $variant->getSegments();
 
         $removed = $this->variants->removeElement($variant);
         if ($removed) {
@@ -239,9 +252,18 @@ final class FlightAnnouncementConfig extends AggregateRoot
                 $this->id->toRfc4122(),
                 $variant->getId()->toRfc4122(),
                 $variant->getLanguageCode(),
-                $variant->getSourceType()->value,
+                'segments',
                 $this->updatedAt,
             ));
+            foreach ($segments as $segment) {
+                $this->recordEvent(new AnnouncementTemplateSegmentRemoved(
+                    $this->id->toRfc4122(),
+                    $variant->getId()->toRfc4122(),
+                    $segment->getId()->toRfc4122(),
+                    $segment->getType()->value,
+                    $this->updatedAt,
+                ));
+            }
         }
 
         return $removed;
@@ -313,6 +335,12 @@ final class FlightAnnouncementConfig extends AggregateRoot
         );
         if ([] === $activeVariants) {
             $errors[] = 'no_active_variants';
+        }
+        foreach ($activeVariants as $variant) {
+            if ($variant->requiresTts()) {
+                $errors[] = 'text_segment_requires_tts';
+                break;
+            }
         }
 
         return $errors;

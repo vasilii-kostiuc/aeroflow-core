@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Integration\Announcements\Infrastructure\Persistence\Doctrine;
 
 use App\Announcements\Domain\Entity\Announcement;
+use App\Announcements\Domain\Enum\AnnouncementType;
 use App\Announcements\Domain\Repository\AnnouncementRepositoryInterface;
 use App\Announcements\Domain\ValueObject\AnnouncementLanguages;
 use App\Shared\Domain\ValueObject\LanguageCode;
@@ -19,13 +20,17 @@ final class AnnouncementRepositoryTest extends KernelTestCase
         $repository = self::getContainer()->get(AnnouncementRepositoryInterface::class);
         self::assertInstanceOf(AnnouncementRepositoryInterface::class, $repository);
         $flightDefinitionId = Uuid::v7()->toRfc4122();
-        $announcement = Announcement::announceArrival(
+        $announcement = Announcement::createPrepared(
+            AnnouncementType::Arrival,
             $flightDefinitionId,
             AnnouncementLanguages::fromCodes(
                 LanguageCode::fromString('en'),
                 LanguageCode::fromString('ro'),
                 LanguageCode::fromString('ru'),
             ),
+            [],
+            null,
+            [['languageCode' => 'en', 'sortOrder' => 1, 'items' => []]],
         );
         $announcement->pullEvents();
 

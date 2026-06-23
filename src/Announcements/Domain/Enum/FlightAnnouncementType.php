@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Announcements\Domain\Enum;
 
-use App\FlightOperations\Domain\Enum\FlightDirection;
-
 enum FlightAnnouncementType: string
 {
     case CheckInOpening = 'check_in_opening';

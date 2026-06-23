@@ -57,6 +57,9 @@ services:
     App\Announcements\Domain\Repository\FlightAnnouncementConfigRepositoryInterface:
         alias: App\Announcements\Infrastructure\Persistence\Doctrine\FlightAnnouncementConfigRepository
 
+    App\Announcements\Application\Port\FlightOperations\FlightDefinitionLookupInterface:
+        alias: App\Announcements\Infrastructure\Integration\FlightOperations\FlightOperationsFlightDefinitionLookup
+
     App\AudioCatalog\Domain\Repository\AudioAssetRepositoryInterface:
         alias: App\AudioCatalog\Infrastructure\Persistence\Doctrine\AudioAssetRepository
 

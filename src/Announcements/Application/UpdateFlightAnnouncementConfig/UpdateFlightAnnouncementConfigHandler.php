@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace App\Announcements\Application\UpdateFlightAnnouncementConfig;
 
 use App\Announcements\Application\FlightAnnouncementConfigResult;
+use App\Announcements\Application\Port\FlightOperations\FlightDefinitionLookupInterface;
 use App\Announcements\Domain\Entity\FlightAnnouncementConfig;
 use App\Announcements\Domain\Exception\FlightAnnouncementConfigNotFoundException;
+use App\Announcements\Domain\Exception\FlightDefinitionNotFoundException;
 use App\Announcements\Domain\Exception\IncompatibleFlightAnnouncementTypeException;
 use App\Announcements\Domain\Exception\InvalidFlightDefinitionIdException;
 use App\Announcements\Domain\Repository\FlightAnnouncementConfigRepositoryInterface;
-use App\FlightOperations\Domain\Exception\FlightDefinitionNotFoundException;
-use App\FlightOperations\Domain\Repository\FlightDefinitionRepositoryInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\MessageBusInterface;
@@ -22,7 +22,7 @@ final readonly class UpdateFlightAnnouncementConfigHandler
 {
     public function __construct(
         private FlightAnnouncementConfigRepositoryInterface $repository,
-        private FlightDefinitionRepositoryInterface $flightDefinitions,
+        private FlightDefinitionLookupInterface $flightDefinitions,
         #[Autowire(service: 'event.bus')]
         private MessageBusInterface $eventBus,
     ) {
@@ -33,8 +33,8 @@ final readonly class UpdateFlightAnnouncementConfigHandler
         $config = $this->findConfig($command->flightDefinitionId, $command->configId);
         $flightDefinition = $this->flightDefinitions->findById(Uuid::fromString($command->flightDefinitionId))
             ?? throw FlightDefinitionNotFoundException::withId($command->flightDefinitionId);
-        if ($command->enabled && !$config->getAnnouncementType()->isCompatibleWith($flightDefinition->getDirection())) {
-            throw IncompatibleFlightAnnouncementTypeException::forDirection($config->getAnnouncementType()->value, $flightDefinition->getDirection()->value);
+        if ($command->enabled && !$config->getAnnouncementType()->isCompatibleWith($flightDefinition->direction)) {
+            throw IncompatibleFlightAnnouncementTypeException::forDirection($config->getAnnouncementType()->value, $flightDefinition->direction->value);
         }
         $config->changeSettings($command->enabled, $command->repeatEveryMinutes);
         $this->repository->save($config);

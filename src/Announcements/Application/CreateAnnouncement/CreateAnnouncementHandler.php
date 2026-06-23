@@ -6,7 +6,7 @@ namespace App\Announcements\Application\CreateAnnouncement;
 
 use App\Announcements\Application\AnnouncementResult;
 use App\Announcements\Application\Port\FlightOperations\FlightDefinitionLookupInterface;
-use App\Announcements\Application\Port\FlightOperations\OperationalResourceLookupInterface;
+use App\Announcements\Application\Service\AnnouncementOperationalResourceResolver;
 use App\Announcements\Application\Service\AnnouncementTemplateResolver;
 use App\Announcements\Domain\Entity\Announcement;
 use App\Announcements\Domain\Enum\AnnouncementType;
@@ -15,7 +15,6 @@ use App\Announcements\Domain\Exception\AnnouncementConfigurationNotReadyExceptio
 use App\Announcements\Domain\Exception\FlightDefinitionNotFoundException;
 use App\Announcements\Domain\Exception\InactiveFlightDefinitionException;
 use App\Announcements\Domain\Exception\InvalidFlightDefinitionIdException;
-use App\Announcements\Domain\Exception\OperationalResourceUnavailableException;
 use App\Announcements\Domain\Repository\AnnouncementRepositoryInterface;
 use App\Announcements\Domain\Repository\FlightAnnouncementConfigRepositoryInterface;
 use App\Announcements\Domain\ValueObject\AnnouncementLanguages;
@@ -32,7 +31,7 @@ final readonly class CreateAnnouncementHandler
         private AnnouncementRepositoryInterface $repository,
         private FlightAnnouncementConfigRepositoryInterface $configs,
         private FlightDefinitionLookupInterface $flightDefinitions,
-        private OperationalResourceLookupInterface $resources,
+        private AnnouncementOperationalResourceResolver $resourceResolver,
         private AnnouncementTemplateResolver $resolver,
         #[Autowire(service: 'event.bus')]
         private MessageBusInterface $eventBus,
@@ -61,29 +60,20 @@ final readonly class CreateAnnouncementHandler
             $command->languages,
         ));
 
-        $counters = [];
-        $gate = null;
-        if (in_array($type, [AnnouncementType::CheckInOpening, AnnouncementType::CheckInClosing], true)) {
-            if ($command->checkInCounterIds === [] || count($command->checkInCounterIds) !== count(array_unique($command->checkInCounterIds))) {
-                throw OperationalResourceUnavailableException::counters($command->checkInCounterIds);
-            }
-            $counters = $this->resources->resolveActiveCheckInCounters($command->checkInCounterIds);
-            if (count($counters) !== count($command->checkInCounterIds)) {
-                throw OperationalResourceUnavailableException::counters($command->checkInCounterIds);
-            }
-        } elseif ($type === AnnouncementType::BoardingInvitation) {
-            if ($command->gateId === null || ($gate = $this->resources->resolveActiveGate($command->gateId)) === null) {
-                throw OperationalResourceUnavailableException::gate((string) $command->gateId);
-            }
-        }
+        $resources = $this->resourceResolver->resolve($type, $command->checkInCounterIds, $command->gateId);
 
-        $audioSequence = $this->resolver->resolve($config, $languages->toStrings(), $counters, $gate);
+        $audioSequence = $this->resolver->resolve(
+            $config,
+            $languages->toStrings(),
+            $resources->checkInCounters,
+            $resources->gate,
+        );
         $announcement = Announcement::createPrepared(
             $type,
             $command->flightDefinitionId,
             $languages,
-            array_map(static fn ($counter): array => ['id' => $counter->id, 'code' => $counter->code], $counters),
-            $gate === null ? null : ['id' => $gate->id, 'code' => $gate->code],
+            $resources->checkInCounterSnapshots(),
+            $resources->gateSnapshot(),
             $audioSequence,
         );
         $this->repository->save($announcement);

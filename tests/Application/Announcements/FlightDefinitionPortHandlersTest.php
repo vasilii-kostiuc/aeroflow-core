@@ -14,6 +14,7 @@ use App\Announcements\Application\Port\AudioCatalog\AudioPromptLookupInterface;
 use App\Announcements\Application\Port\FlightOperations\FlightDefinitionLookupInterface;
 use App\Announcements\Application\Port\FlightOperations\FlightDefinitionSnapshot;
 use App\Announcements\Application\Port\FlightOperations\OperationalResourceLookupInterface;
+use App\Announcements\Application\Service\AnnouncementOperationalResourceResolver;
 use App\Announcements\Application\Service\AnnouncementTemplateResolver;
 use App\Announcements\Application\UpdateFlightAnnouncementConfig\UpdateFlightAnnouncementConfigCommand;
 use App\Announcements\Application\UpdateFlightAnnouncementConfig\UpdateFlightAnnouncementConfigHandler;
@@ -52,7 +53,7 @@ final class FlightDefinitionPortHandlersTest extends TestCase
             $announcements,
             $configs,
             $lookup,
-            $this->createStub(OperationalResourceLookupInterface::class),
+            $this->resourceResolver(),
             new AnnouncementTemplateResolver($audio),
             $this->messageBus(),
         )(new CreateAnnouncementCommand(
@@ -70,7 +71,7 @@ final class FlightDefinitionPortHandlersTest extends TestCase
             $this->createStub(AnnouncementRepositoryInterface::class),
             $this->createStub(FlightAnnouncementConfigRepositoryInterface::class),
             $this->lookup(null),
-            $this->createStub(OperationalResourceLookupInterface::class),
+            $this->resourceResolver(),
             new AnnouncementTemplateResolver($this->createStub(AudioPromptLookupInterface::class)),
             $this->createStub(MessageBusInterface::class),
         );
@@ -90,7 +91,7 @@ final class FlightDefinitionPortHandlersTest extends TestCase
             $this->createStub(AnnouncementRepositoryInterface::class),
             $this->createStub(FlightAnnouncementConfigRepositoryInterface::class),
             $this->lookup(new FlightDefinitionSnapshot(false, FlightDirection::Departure)),
-            $this->createStub(OperationalResourceLookupInterface::class),
+            $this->resourceResolver(),
             new AnnouncementTemplateResolver($this->createStub(AudioPromptLookupInterface::class)),
             $this->createStub(MessageBusInterface::class),
         );
@@ -182,6 +183,13 @@ final class FlightDefinitionPortHandlersTest extends TestCase
         $lookup->method('findById')->willReturn($snapshot);
 
         return $lookup;
+    }
+
+    private function resourceResolver(): AnnouncementOperationalResourceResolver
+    {
+        return new AnnouncementOperationalResourceResolver(
+            $this->createStub(OperationalResourceLookupInterface::class),
+        );
     }
 
     private function messageBus(): MessageBusInterface

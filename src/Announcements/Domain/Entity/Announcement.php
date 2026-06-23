@@ -8,6 +8,7 @@ use App\Announcements\Domain\Enum\AnnouncementStatus;
 use App\Announcements\Domain\Enum\AnnouncementType;
 use App\Announcements\Domain\Event\AnnouncementCancelled;
 use App\Announcements\Domain\Event\AnnouncementCreated;
+use App\Announcements\Domain\Exception\InvalidAnnouncementResourcesException;
 use App\Announcements\Domain\Exception\InvalidFlightDefinitionIdException;
 use App\Announcements\Domain\ValueObject\AnnouncementLanguages;
 use App\Shared\Domain\AggregateRoot;
@@ -69,6 +70,13 @@ final class Announcement extends AggregateRoot
         if (!Uuid::isValid($flightDefinitionId)) {
             throw InvalidFlightDefinitionIdException::forValue($flightDefinitionId);
         }
+        if ($type->requiresCheckInCounters() && [] === $checkInCounters) {
+            throw InvalidAnnouncementResourcesException::missingCheckInCounters();
+        }
+        if ($type->requiresGate() && null === $gate) {
+            throw InvalidAnnouncementResourcesException::missingGate();
+        }
+
         $now = self::now();
         $announcement = new self();
         $announcement->id = Uuid::v7();

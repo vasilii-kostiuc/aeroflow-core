@@ -9,6 +9,7 @@ use App\Announcements\Domain\Enum\AnnouncementStatus;
 use App\Announcements\Domain\Enum\AnnouncementType;
 use App\Announcements\Domain\Event\AnnouncementCancelled;
 use App\Announcements\Domain\Event\AnnouncementCreated;
+use App\Announcements\Domain\Exception\InvalidAnnouncementResourcesException;
 use App\Announcements\Domain\ValueObject\AnnouncementLanguages;
 use App\Shared\Domain\ValueObject\LanguageCode;
 use PHPUnit\Framework\TestCase;
@@ -43,6 +44,34 @@ final class AnnouncementTest extends TestCase
         self::assertFalse($announcement->cancel());
         self::assertSame(AnnouncementStatus::Cancelled, $announcement->getStatus());
         self::assertInstanceOf(AnnouncementCancelled::class, $announcement->pullEvents()[0]);
+    }
+
+    public function testCheckInAnnouncementRequiresCounters(): void
+    {
+        $this->expectException(InvalidAnnouncementResourcesException::class);
+
+        Announcement::createPrepared(
+            AnnouncementType::CheckInOpening,
+            Uuid::v7()->toRfc4122(),
+            AnnouncementLanguages::fromCodes(LanguageCode::fromString('en')),
+            [],
+            null,
+            [['languageCode' => 'en', 'sortOrder' => 1, 'items' => []]],
+        );
+    }
+
+    public function testBoardingAnnouncementRequiresGate(): void
+    {
+        $this->expectException(InvalidAnnouncementResourcesException::class);
+
+        Announcement::createPrepared(
+            AnnouncementType::BoardingInvitation,
+            Uuid::v7()->toRfc4122(),
+            AnnouncementLanguages::fromCodes(LanguageCode::fromString('en')),
+            [],
+            null,
+            [['languageCode' => 'en', 'sortOrder' => 1, 'items' => []]],
+        );
     }
 
     private function arrival(): Announcement

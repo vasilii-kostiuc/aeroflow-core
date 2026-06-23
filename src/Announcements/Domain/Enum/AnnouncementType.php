@@ -10,4 +10,14 @@ enum AnnouncementType: string
     case CheckInClosing = 'check_in_closing';
     case BoardingInvitation = 'boarding_invitation';
     case Arrival = 'arrival';
+
+    public function requiresCheckInCounters(): bool
+    {
+        return in_array($this, [self::CheckInOpening, self::CheckInClosing], true);
+    }
+
+    public function requiresGate(): bool
+    {
+        return self::BoardingInvitation === $this;
+    }
 }

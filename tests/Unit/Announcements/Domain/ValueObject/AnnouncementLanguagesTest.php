@@ -6,7 +6,7 @@ namespace App\Tests\Unit\Announcements\Domain\ValueObject;
 
 use App\Announcements\Domain\Exception\InvalidAnnouncementLanguagesException;
 use App\Announcements\Domain\ValueObject\AnnouncementLanguages;
-use App\Announcements\Domain\ValueObject\LanguageCode;
+use App\Shared\Domain\ValueObject\LanguageCode;
 use PHPUnit\Framework\TestCase;
 
 final class AnnouncementLanguagesTest extends TestCase

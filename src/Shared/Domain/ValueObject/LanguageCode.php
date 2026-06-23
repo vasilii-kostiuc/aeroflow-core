@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Announcements\Domain\ValueObject;
+namespace App\Shared\Domain\ValueObject;
 
-use App\Announcements\Domain\Exception\InvalidLanguageCodeException;
+use App\Shared\Domain\Exception\InvalidLanguageCodeException;
 
 final readonly class LanguageCode
 {

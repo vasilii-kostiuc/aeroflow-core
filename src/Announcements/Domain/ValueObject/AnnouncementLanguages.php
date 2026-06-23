@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Announcements\Domain\ValueObject;
 
 use App\Announcements\Domain\Exception\InvalidAnnouncementLanguagesException;
+use App\Shared\Domain\ValueObject\LanguageCode;
 
 final readonly class AnnouncementLanguages
 {

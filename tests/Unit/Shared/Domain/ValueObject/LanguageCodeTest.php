@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Tests\Unit\Announcements\Domain\ValueObject;
+namespace App\Tests\Unit\Shared\Domain\ValueObject;
 
-use App\Announcements\Domain\Exception\InvalidLanguageCodeException;
-use App\Announcements\Domain\ValueObject\LanguageCode;
+use App\Shared\Domain\Exception\InvalidLanguageCodeException;
+use App\Shared\Domain\ValueObject\LanguageCode;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 

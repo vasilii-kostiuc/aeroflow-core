@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\AudioCatalog\Application\UploadAudioAsset;
 
-use App\Announcements\Domain\ValueObject\LanguageCode;
 use App\AudioCatalog\Application\AudioAssetResult;
 use App\AudioCatalog\Application\Storage\AudioAssetStorageInterface;
 use App\AudioCatalog\Domain\Entity\AudioAsset;
 use App\AudioCatalog\Domain\Exception\InvalidAudioAssetUploadException;
 use App\AudioCatalog\Domain\Repository\AudioAssetRepositoryInterface;
+use App\Shared\Domain\ValueObject\LanguageCode;
 use finfo;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;

@@ -15,7 +15,7 @@ use App\Announcements\Domain\Exception\InvalidFlightDefinitionIdException;
 use App\Announcements\Domain\ValueObject\AnnouncementLanguages;
 use App\Announcements\Domain\ValueObject\CheckInCounterRange;
 use App\Announcements\Domain\ValueObject\GateCode;
-use App\Announcements\Domain\ValueObject\LanguageCode;
+use App\Shared\Domain\ValueObject\LanguageCode;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 

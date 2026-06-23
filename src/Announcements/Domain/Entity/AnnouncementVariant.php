@@ -6,7 +6,7 @@ namespace App\Announcements\Domain\Entity;
 
 use App\Announcements\Domain\Enum\AnnouncementVariantSourceType;
 use App\Announcements\Domain\Exception\InvalidAnnouncementVariantSourceException;
-use App\Announcements\Domain\ValueObject\LanguageCode;
+use App\Shared\Domain\ValueObject\LanguageCode;
 use DateTimeImmutable;
 use DateTimeZone;
 use Doctrine\ORM\Mapping as ORM;

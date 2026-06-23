@@ -9,9 +9,9 @@ use App\Announcements\Domain\Enum\AnnouncementVariantSourceType;
 use App\Announcements\Domain\Enum\FlightAnnouncementType;
 use App\Announcements\Domain\Exception\DuplicateAnnouncementVariantLanguageException;
 use App\Announcements\Domain\Exception\InvalidRepeatRuleException;
-use App\Announcements\Domain\ValueObject\LanguageCode;
 use App\AudioCatalog\Domain\Entity\AudioAsset;
 use App\AudioCatalog\Domain\Event\AudioAssetUploaded;
+use App\Shared\Domain\ValueObject\LanguageCode;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 

@@ -7,7 +7,7 @@ namespace App\Tests\Integration\Announcements\Infrastructure\Persistence\Doctrin
 use App\Announcements\Domain\Entity\Announcement;
 use App\Announcements\Domain\Repository\AnnouncementRepositoryInterface;
 use App\Announcements\Domain\ValueObject\AnnouncementLanguages;
-use App\Announcements\Domain\ValueObject\LanguageCode;
+use App\Shared\Domain\ValueObject\LanguageCode;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Uid\Uuid;
 

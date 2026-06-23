@@ -8,7 +8,6 @@ use App\Announcements\Domain\Entity\FlightAnnouncementConfig;
 use App\Announcements\Domain\Enum\AnnouncementVariantSourceType;
 use App\Announcements\Domain\Enum\FlightAnnouncementType;
 use App\Announcements\Domain\Repository\FlightAnnouncementConfigRepositoryInterface;
-use App\Announcements\Domain\ValueObject\LanguageCode;
 use App\AudioCatalog\Domain\Entity\AudioAsset;
 use App\AudioCatalog\Domain\Repository\AudioAssetRepositoryInterface;
 use App\FlightOperations\Domain\Entity\FlightDefinition;
@@ -16,6 +15,7 @@ use App\FlightOperations\Domain\Enum\FlightDirection;
 use App\FlightOperations\Domain\Repository\FlightDefinitionRepositoryInterface;
 use App\FlightOperations\Domain\ValueObject\AirportCode;
 use App\FlightOperations\Domain\ValueObject\FlightNumber;
+use App\Shared\Domain\ValueObject\LanguageCode;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 final class FlightAnnouncementConfigRepositoryTest extends KernelTestCase

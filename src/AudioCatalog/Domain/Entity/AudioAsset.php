@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\AudioCatalog\Domain\Entity;
 
-use App\Announcements\Domain\ValueObject\LanguageCode;
 use App\AudioCatalog\Domain\Event\AudioAssetUploaded;
 use App\Shared\Domain\AggregateRoot;
+use App\Shared\Domain\ValueObject\LanguageCode;
 use DateTimeImmutable;
 use DateTimeZone;
 use Doctrine\ORM\Mapping as ORM;

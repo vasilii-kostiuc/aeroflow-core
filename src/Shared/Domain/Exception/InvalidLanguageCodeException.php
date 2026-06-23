@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Announcements\Domain\Exception;
+namespace App\Shared\Domain\Exception;
 
 use App\Shared\Domain\DomainException;
 

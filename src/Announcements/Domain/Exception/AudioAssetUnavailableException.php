@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\AudioCatalog\Domain\Exception;
+namespace App\Announcements\Domain\Exception;
 
 use App\Shared\Domain\DomainException;
 

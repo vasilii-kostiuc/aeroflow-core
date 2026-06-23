@@ -5,13 +5,12 @@ declare(strict_types=1);
 namespace App\Announcements\Application\AddAnnouncementVariant;
 
 use App\Announcements\Application\FlightAnnouncementConfigResult;
+use App\Announcements\Application\Service\AnnouncementAudioAssetValidator;
 use App\Announcements\Domain\Entity\FlightAnnouncementConfig;
 use App\Announcements\Domain\Enum\AnnouncementVariantSourceType;
 use App\Announcements\Domain\Exception\FlightAnnouncementConfigNotFoundException;
 use App\Announcements\Domain\Exception\InvalidFlightDefinitionIdException;
 use App\Announcements\Domain\Repository\FlightAnnouncementConfigRepositoryInterface;
-use App\AudioCatalog\Domain\Exception\AudioAssetUnavailableException;
-use App\AudioCatalog\Domain\Repository\AudioAssetRepositoryInterface;
 use App\Shared\Domain\ValueObject\LanguageCode;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -23,7 +22,7 @@ final readonly class AddAnnouncementVariantHandler
 {
     public function __construct(
         private FlightAnnouncementConfigRepositoryInterface $repository,
-        private AudioAssetRepositoryInterface $audioAssets,
+        private AnnouncementAudioAssetValidator $audioAssetValidator,
         #[Autowire(service: 'event.bus')]
         private MessageBusInterface $eventBus,
     ) {
@@ -32,7 +31,7 @@ final readonly class AddAnnouncementVariantHandler
     public function __invoke(AddAnnouncementVariantCommand $command): FlightAnnouncementConfigResult
     {
         $config = $this->findConfig($command->flightDefinitionId, $command->configId);
-        $this->assertAudioAssetIsAvailable($command->sourceType, $command->audioAssetId);
+        $this->audioAssetValidator->validate($command->sourceType, $command->audioAssetId);
         $config->addVariant(
             LanguageCode::fromString($command->languageCode),
             $command->sortOrder,
@@ -46,22 +45,6 @@ final readonly class AddAnnouncementVariantHandler
         $this->dispatchEvents($config);
 
         return FlightAnnouncementConfigResult::fromEntity($config);
-    }
-
-    private function assertAudioAssetIsAvailable(string $sourceType, ?string $audioAssetId): void
-    {
-        if (AnnouncementVariantSourceType::AudioAsset->value !== $sourceType) {
-            return;
-        }
-
-        if ($audioAssetId === null || !Uuid::isValid($audioAssetId)) {
-            throw AudioAssetUnavailableException::withId((string) $audioAssetId);
-        }
-
-        $asset = $this->audioAssets->findById(Uuid::fromString($audioAssetId));
-        if ($asset === null || !$asset->isActive()) {
-            throw AudioAssetUnavailableException::withId($audioAssetId);
-        }
     }
 
     private function findConfig(string $flightDefinitionId, string $configId): FlightAnnouncementConfig

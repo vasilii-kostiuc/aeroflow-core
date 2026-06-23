@@ -21,18 +21,6 @@ final class BoundedContextDependenciesTest extends TestCase
         'UserAccess',
     ];
 
-    /**
-     * Existing dependencies that must be removed through a dedicated refactoring.
-     *
-     * @var list<string>
-     */
-    private const KNOWN_VIOLATIONS = [
-        'src/Announcements/Application/AddAnnouncementVariant/AddAnnouncementVariantHandler.php -> App\\AudioCatalog\\Domain\\Exception\\AudioAssetUnavailableException',
-        'src/Announcements/Application/AddAnnouncementVariant/AddAnnouncementVariantHandler.php -> App\\AudioCatalog\\Domain\\Repository\\AudioAssetRepositoryInterface',
-        'src/Announcements/Application/UpdateAnnouncementVariant/UpdateAnnouncementVariantHandler.php -> App\\AudioCatalog\\Domain\\Exception\\AudioAssetUnavailableException',
-        'src/Announcements/Application/UpdateAnnouncementVariant/UpdateAnnouncementVariantHandler.php -> App\\AudioCatalog\\Domain\\Repository\\AudioAssetRepositoryInterface',
-    ];
-
     public function testBoundedContextsDoNotImportEachOtherOutsideIntegrationAdapters(): void
     {
         $projectDirectory = dirname(__DIR__, 3);
@@ -71,13 +59,10 @@ final class BoundedContextDependenciesTest extends TestCase
             }
         }
 
-        $knownViolations = self::KNOWN_VIOLATIONS;
         sort($actualViolations);
-        sort($knownViolations);
 
-        self::assertSame($knownViolations, $actualViolations, sprintf(
+        self::assertSame([], $actualViolations, sprintf(
             "Bounded contexts must interact through ports and integration adapters.\n"
-            ."Update the known-violations baseline only when intentionally removing existing debt.\n"
             ."Actual dependencies:\n%s",
             implode("\n", $actualViolations),
         ));

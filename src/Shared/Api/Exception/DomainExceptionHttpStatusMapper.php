@@ -6,10 +6,10 @@ namespace App\Shared\Api\Exception;
 
 use App\Announcements\Domain\Exception\AnnouncementNotFoundException;
 use App\Announcements\Domain\Exception\AnnouncementVariantNotFoundException;
+use App\Announcements\Domain\Exception\AudioAssetUnavailableException;
 use App\Announcements\Domain\Exception\DuplicateFlightAnnouncementConfigException;
 use App\Announcements\Domain\Exception\FlightAnnouncementConfigNotFoundException;
 use App\Announcements\Domain\Exception\FlightDefinitionNotFoundException as AnnouncementFlightDefinitionNotFoundException;
-use App\AudioCatalog\Domain\Exception\AudioAssetUnavailableException;
 use App\AudioCatalog\Domain\Exception\InvalidAudioAssetUploadException;
 use App\FlightOperations\Domain\Exception\AirportNotFoundException;
 use App\FlightOperations\Domain\Exception\DuplicateAirportException;

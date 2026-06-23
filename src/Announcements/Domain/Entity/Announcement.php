@@ -24,6 +24,7 @@ use Symfony\Component\Uid\Uuid;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'announcement')]
+#[ORM\Index(name: 'IDX_ANNOUNCEMENT_CREATED_AT', columns: ['created_at'])]
 final class Announcement extends AggregateRoot
 {
     #[ORM\Id]

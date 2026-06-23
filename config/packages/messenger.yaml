@@ -8,9 +8,7 @@ framework:
         buses:
             command.bus: ~
             event.bus:
-                default_middleware:
-                    enabled: true
-                    allow_no_handlers: true
+                default_middleware: allow_no_handlers
 
         transports:
             # https://symfony.com/doc/current/messenger.html#transport-configuration

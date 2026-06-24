@@ -9,30 +9,23 @@ use App\AudioCatalog\Application\ListAudioAssets\ListAudioAssetsQuery;
 use App\AudioCatalog\Application\UploadAudioAsset\UploadAudioAssetCommand;
 use App\AudioCatalog\Domain\Exception\InvalidAudioAssetUploadException;
 use App\Shared\Api\Response\ApiResponse;
-use LogicException;
+use App\Shared\Application\Bus\ApplicationBus;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\Messenger\MessageBusInterface;
-use Symfony\Component\Messenger\Stamp\HandledStamp;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[Route('/admin/audio-assets')]
 final readonly class AudioAssetController
 {
-    public function __construct(private MessageBusInterface $messageBus)
+    public function __construct(private ApplicationBus $bus)
     {
     }
 
     #[Route('', methods: ['GET'])]
     public function list(): JsonResponse
     {
-        $result = $this->messageBus
-            ->dispatch(new ListAudioAssetsQuery())
-            ->last(HandledStamp::class)
-            ?->getResult();
-
-        return ApiResponse::success($result);
+        return ApiResponse::success($this->bus->handleList(new ListAudioAssetsQuery(), AudioAssetResult::class));
     }
 
     #[Route('', methods: ['POST'])]
@@ -43,19 +36,12 @@ final readonly class AudioAssetController
             throw InvalidAudioAssetUploadException::unreadable();
         }
 
-        $result = $this->messageBus
-            ->dispatch(new UploadAudioAssetCommand(
-                $file->getPathname(),
-                $file->getClientOriginalName(),
-                (string) $request->request->get('languageCode', ''),
-                (int) $file->getSize(),
-            ))
-            ->last(HandledStamp::class)
-            ?->getResult();
-
-        if (!$result instanceof AudioAssetResult) {
-            throw new LogicException('Audio asset upload handler did not return the expected result.');
-        }
+        $result = $this->bus->handleAs(new UploadAudioAssetCommand(
+            $file->getPathname(),
+            $file->getClientOriginalName(),
+            (string) $request->request->get('languageCode', ''),
+            (int) $file->getSize(),
+        ), AudioAssetResult::class);
 
         return ApiResponse::created($result, 'Audio asset uploaded successfully');
     }

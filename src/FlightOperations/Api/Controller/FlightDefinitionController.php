@@ -14,16 +14,14 @@ use App\FlightOperations\Application\GetFlightDefinition\GetFlightDefinitionQuer
 use App\FlightOperations\Application\ListFlightDefinitions\ListFlightDefinitionsQuery;
 use App\FlightOperations\Application\UpdateFlightDefinition\UpdateFlightDefinitionCommand;
 use App\Shared\Api\Response\ApiResponse;
+use App\Shared\Application\Bus\ApplicationBus;
 use App\Shared\Application\Pagination\PaginatedResult;
-use LogicException;
 use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\MapQueryString;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
-use Symfony\Component\Messenger\MessageBusInterface;
-use Symfony\Component\Messenger\Stamp\HandledStamp;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[Route('/flight-definitions')]
@@ -31,7 +29,7 @@ use Symfony\Component\Routing\Attribute\Route;
 final class FlightDefinitionController extends AbstractController
 {
     public function __construct(
-        private MessageBusInterface $messageBus,
+        private ApplicationBus $bus,
     ) {
     }
 
@@ -46,12 +44,12 @@ final class FlightDefinitionController extends AbstractController
     )]
     public function create(#[MapRequestPayload] FlightDefinitionDetailsRequest $request): JsonResponse
     {
-        $result = $this->result(new CreateFlightDefinitionCommand(
+        $result = $this->bus->handleAs(new CreateFlightDefinitionCommand(
             $request->flightNumber,
             $request->direction,
             $request->originAirportCode,
             $request->destinationAirportCode,
-        ));
+        ), FlightDefinitionResult::class);
 
         return ApiResponse::created($result, 'Flight definition created successfully');
     }
@@ -68,13 +66,13 @@ final class FlightDefinitionController extends AbstractController
         #[MapQueryString(validationFailedStatusCode: Response::HTTP_UNPROCESSABLE_ENTITY)]
         FlightDefinitionListRequest $request,
     ): JsonResponse {
-        $result = $this->result(new ListFlightDefinitionsQuery(
+        $result = $this->bus->handleAs(new ListFlightDefinitionsQuery(
             active: $request->active,
             direction: $request->direction,
             search: $request->search,
             page: $request->page,
             limit: $request->limit,
-        ));
+        ), PaginatedResult::class);
 
         return ApiResponse::success($result);
     }
@@ -90,7 +88,9 @@ final class FlightDefinitionController extends AbstractController
     )]
     public function get(string $id): JsonResponse
     {
-        return ApiResponse::success($this->result(new GetFlightDefinitionQuery($id)));
+        return ApiResponse::success(
+            $this->bus->handleAs(new GetFlightDefinitionQuery($id), FlightDefinitionResult::class),
+        );
     }
 
     #[Route('/{id}', name: 'app_flight_definition_update', methods: ['PUT'])]
@@ -105,13 +105,13 @@ final class FlightDefinitionController extends AbstractController
     )]
     public function update(string $id, #[MapRequestPayload] FlightDefinitionDetailsRequest $request): JsonResponse
     {
-        $result = $this->result(new UpdateFlightDefinitionCommand(
+        $result = $this->bus->handleAs(new UpdateFlightDefinitionCommand(
             $id,
             $request->flightNumber,
             $request->direction,
             $request->originAirportCode,
             $request->destinationAirportCode,
-        ));
+        ), FlightDefinitionResult::class);
 
         return ApiResponse::success($result, 'Flight definition updated successfully');
     }
@@ -128,7 +128,7 @@ final class FlightDefinitionController extends AbstractController
     public function activate(string $id): JsonResponse
     {
         return ApiResponse::success(
-            $this->result(new ActivateFlightDefinitionCommand($id)),
+            $this->bus->handleAs(new ActivateFlightDefinitionCommand($id), FlightDefinitionResult::class),
             'Flight definition activated successfully',
         );
     }
@@ -145,22 +145,8 @@ final class FlightDefinitionController extends AbstractController
     public function deactivate(string $id): JsonResponse
     {
         return ApiResponse::success(
-            $this->result(new DeactivateFlightDefinitionCommand($id)),
+            $this->bus->handleAs(new DeactivateFlightDefinitionCommand($id), FlightDefinitionResult::class),
             'Flight definition deactivated successfully',
         );
-    }
-
-    /**
-     * @return FlightDefinitionResult|PaginatedResult<FlightDefinitionResult>
-     */
-    private function result(object $message): FlightDefinitionResult|PaginatedResult
-    {
-        $result = $this->messageBus->dispatch($message)->last(HandledStamp::class)?->getResult();
-
-        if (!$result instanceof FlightDefinitionResult && !$result instanceof PaginatedResult) {
-            throw new LogicException('Flight definition handler did not return the expected result.');
-        }
-
-        return $result;
     }
 }

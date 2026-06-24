@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\UserAccess\Api\Controller;
 
 use App\Shared\Api\Response\ApiResponse;
+use App\Shared\Application\Bus\ApplicationBus;
 use App\UserAccess\Api\Request\LogoutUserRequest;
 use App\UserAccess\Api\Request\RefreshTokenRequest;
 use App\UserAccess\Application\LogoutUser\LogoutUserCommand;
@@ -15,14 +16,12 @@ use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
-use Symfony\Component\Messenger\MessageBusInterface;
-use Symfony\Component\Messenger\Stamp\HandledStamp;
 use Symfony\Component\Routing\Attribute\Route;
 
 final class TokenController extends AbstractController
 {
     public function __construct(
-        private MessageBusInterface $messageBus,
+        private ApplicationBus $bus,
     ) {
     }
 
@@ -72,10 +71,7 @@ final class TokenController extends AbstractController
     #[Route('/token/refresh', name: 'app_token_refresh', methods: ['POST'])]
     public function refresh(#[MapRequestPayload] RefreshTokenRequest $request): JsonResponse
     {
-        $envelope = $this->messageBus->dispatch(new RefreshTokenCommand($request->refreshToken));
-
-        /** @var RefreshTokenResult $response */
-        $response = $envelope->last(HandledStamp::class)?->getResult();
+        $response = $this->bus->handleAs(new RefreshTokenCommand($request->refreshToken), RefreshTokenResult::class);
 
         return ApiResponse::success(
             data: $response,
@@ -105,7 +101,7 @@ final class TokenController extends AbstractController
     #[Route('/logout', name: 'app_logout', methods: ['POST'])]
     public function logout(#[MapRequestPayload] LogoutUserRequest $request): JsonResponse
     {
-        $this->messageBus->dispatch(new LogoutUserCommand($request->refreshToken));
+        $this->bus->dispatch(new LogoutUserCommand($request->refreshToken));
 
         return ApiResponse::noContent();
     }

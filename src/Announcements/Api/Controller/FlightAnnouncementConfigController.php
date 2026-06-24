@@ -15,13 +15,11 @@ use App\Announcements\Application\ListFlightAnnouncementConfigs\ListFlightAnnoun
 use App\Announcements\Application\UpdateAnnouncementVariant\UpdateAnnouncementVariantCommand;
 use App\Announcements\Application\UpdateFlightAnnouncementConfig\UpdateFlightAnnouncementConfigCommand;
 use App\Shared\Api\Response\ApiResponse;
-use LogicException;
+use App\Shared\Application\Bus\ApplicationBus;
 use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
-use Symfony\Component\Messenger\MessageBusInterface;
-use Symfony\Component\Messenger\Stamp\HandledStamp;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[Route('/admin/flight-definitions/{flightDefinitionId}/announcement-configs')]
@@ -29,14 +27,17 @@ use Symfony\Component\Routing\Attribute\Route;
 final class FlightAnnouncementConfigController extends AbstractController
 {
     public function __construct(
-        private MessageBusInterface $messageBus,
+        private ApplicationBus $bus,
     ) {
     }
 
     #[Route('', name: 'app_flight_announcement_config_list', methods: ['GET'])]
     public function list(string $flightDefinitionId): JsonResponse
     {
-        return ApiResponse::success($this->rawResult(new ListFlightAnnouncementConfigsQuery($flightDefinitionId)));
+        return ApiResponse::success($this->bus->handleList(
+            new ListFlightAnnouncementConfigsQuery($flightDefinitionId),
+            FlightAnnouncementConfigResult::class,
+        ));
     }
 
     #[Route('', name: 'app_flight_announcement_config_create', methods: ['POST'])]
@@ -46,12 +47,12 @@ final class FlightAnnouncementConfigController extends AbstractController
         FlightAnnouncementConfigRequest $request,
     ): JsonResponse {
         return ApiResponse::created(
-            $this->result(new CreateFlightAnnouncementConfigCommand(
+            $this->bus->handleAs(new CreateFlightAnnouncementConfigCommand(
                 $flightDefinitionId,
                 $request->announcementType,
                 $request->enabled,
                 $request->repeatEveryMinutes,
-            )),
+            ), FlightAnnouncementConfigResult::class),
             'Flight announcement config created successfully',
         );
     }
@@ -64,12 +65,12 @@ final class FlightAnnouncementConfigController extends AbstractController
         FlightAnnouncementConfigSettingsRequest $request,
     ): JsonResponse {
         return ApiResponse::success(
-            $this->result(new UpdateFlightAnnouncementConfigCommand(
+            $this->bus->handleAs(new UpdateFlightAnnouncementConfigCommand(
                 $flightDefinitionId,
                 $configId,
                 $request->enabled,
                 $request->repeatEveryMinutes,
-            )),
+            ), FlightAnnouncementConfigResult::class),
             'Flight announcement config updated successfully',
         );
     }
@@ -82,14 +83,14 @@ final class FlightAnnouncementConfigController extends AbstractController
         AnnouncementVariantRequest $request,
     ): JsonResponse {
         return ApiResponse::created(
-            $this->result(new AddAnnouncementVariantCommand(
+            $this->bus->handleAs(new AddAnnouncementVariantCommand(
                 $flightDefinitionId,
                 $configId,
                 $request->languageCode,
                 $request->sortOrder,
                 $request->segments,
                 $request->enabled,
-            )),
+            ), FlightAnnouncementConfigResult::class),
             'Announcement variant added successfully',
         );
     }
@@ -103,7 +104,7 @@ final class FlightAnnouncementConfigController extends AbstractController
         AnnouncementVariantRequest $request,
     ): JsonResponse {
         return ApiResponse::success(
-            $this->result(new UpdateAnnouncementVariantCommand(
+            $this->bus->handleAs(new UpdateAnnouncementVariantCommand(
                 $flightDefinitionId,
                 $configId,
                 $variantId,
@@ -111,7 +112,7 @@ final class FlightAnnouncementConfigController extends AbstractController
                 $request->sortOrder,
                 $request->segments,
                 $request->enabled,
-            )),
+            ), FlightAnnouncementConfigResult::class),
             'Announcement variant updated successfully',
         );
     }
@@ -123,24 +124,11 @@ final class FlightAnnouncementConfigController extends AbstractController
         string $variantId,
     ): JsonResponse {
         return ApiResponse::success(
-            $this->result(new DeleteAnnouncementVariantCommand($flightDefinitionId, $configId, $variantId)),
+            $this->bus->handleAs(
+                new DeleteAnnouncementVariantCommand($flightDefinitionId, $configId, $variantId),
+                FlightAnnouncementConfigResult::class,
+            ),
             'Announcement variant deleted successfully',
         );
-    }
-
-    private function result(object $message): FlightAnnouncementConfigResult
-    {
-        $result = $this->rawResult($message);
-
-        if (!$result instanceof FlightAnnouncementConfigResult) {
-            throw new LogicException('Flight announcement config handler did not return the expected result.');
-        }
-
-        return $result;
-    }
-
-    private function rawResult(object $message): mixed
-    {
-        return $this->messageBus->dispatch($message)->last(HandledStamp::class)?->getResult();
     }
 }

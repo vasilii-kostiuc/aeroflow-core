@@ -27,6 +27,9 @@ services:
     App\Shared\Application\Bus\ApplicationBus:
         alias: App\Shared\Infrastructure\Bus\MessengerApplicationBus
 
+    App\Shared\Application\Event\DomainEventPublisher:
+        alias: App\Shared\Infrastructure\Event\MessengerDomainEventPublisher
+
     App\UserAccess\Domain\Repository\UserRepositoryInterface:
         alias: App\UserAccess\Infrastructure\Persistance\Doctrine\UserRepository
 

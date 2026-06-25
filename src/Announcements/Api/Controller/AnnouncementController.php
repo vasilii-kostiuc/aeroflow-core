@@ -44,8 +44,9 @@ final class AnnouncementController
     {
         return ApiResponse::created($this->bus->handleAs(new CreateAnnouncementCommand(
             $request->type,
-            $request->flightDefinitionId,
             $request->languages,
+            $request->flightDefinitionId,
+            $request->flightOccurrenceId,
             $request->checkInCounterIds,
             $request->gateId,
         ), AnnouncementResult::class));

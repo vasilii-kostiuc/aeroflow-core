@@ -9,7 +9,7 @@ use Symfony\Component\Validator\Constraints as Assert;
 
 #[OA\Schema(
     schema: 'CreateAnnouncementRequest',
-    required: ['type', 'flightDefinitionId', 'languages'],
+    required: ['type', 'languages'],
 )]
 final readonly class CreateAnnouncementRequest
 {
@@ -21,13 +21,16 @@ final readonly class CreateAnnouncementRequest
         #[OA\Property(enum: ['check_in_opening', 'check_in_closing', 'boarding_invitation', 'arrival'], example: 'check_in_opening')]
         #[Assert\Choice(choices: ['check_in_opening', 'check_in_closing', 'boarding_invitation', 'arrival'])]
         public string $type,
-        #[OA\Property(format: 'uuid')]
-        #[Assert\Uuid]
-        public string $flightDefinitionId,
         #[OA\Property(type: 'array', items: new OA\Items(type: 'string'), example: ['ro-MD', 'en'])]
         #[Assert\Count(min: 1)]
         #[Assert\All([new Assert\Type('string')])]
         public array $languages,
+        #[OA\Property(format: 'uuid', nullable: true)]
+        #[Assert\Uuid]
+        public ?string $flightDefinitionId = null,
+        #[OA\Property(format: 'uuid', nullable: true)]
+        #[Assert\Uuid]
+        public ?string $flightOccurrenceId = null,
         #[OA\Property(
             description: 'Required for check-in announcements. IDs are resolved in the given order.',
             type: 'array',

@@ -10,6 +10,43 @@ use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 final class AnnouncementApiTest extends WebTestCase
 {
+    public function testCreatesAnnouncementFromFlightOccurrenceAndUpdatesOccurrenceStatus(): void
+    {
+        $client = static::createClient();
+        $this->authenticate($client);
+        $flightId = $this->createArrivalFlightDefinition($client);
+        $occurrenceId = $this->createOccurrence($client, $flightId);
+        $assetId = $this->uploadAsset($client);
+
+        $this->json($client, 'POST', sprintf('/api/v1/admin/flight-definitions/%s/announcement-configs', $flightId), [
+            'announcementType' => 'arrival',
+            'enabled' => true,
+            'repeatEveryMinutes' => null,
+        ]);
+        $configId = $this->response($client)['data']['id'];
+        $this->json($client, 'POST', sprintf('/api/v1/admin/flight-definitions/%s/announcement-configs/%s/variants', $flightId, $configId), [
+            'languageCode' => 'en',
+            'sortOrder' => 1,
+            'segments' => [['sortOrder' => 1, 'type' => 'audio_asset', 'audioAssetId' => $assetId]],
+            'enabled' => true,
+        ]);
+        self::assertResponseStatusCodeSame(201);
+
+        $this->json($client, 'POST', '/api/v1/announcements', [
+            'type' => 'arrival',
+            'flightOccurrenceId' => $occurrenceId,
+            'languages' => ['en'],
+        ]);
+        self::assertResponseStatusCodeSame(201);
+        $created = $this->response($client)['data'];
+        self::assertSame($occurrenceId, $created['flightOccurrenceId']);
+        self::assertSame($flightId, $created['flightDefinitionId']);
+
+        $client->request('GET', '/api/v1/flight-occurrences/'.$occurrenceId);
+        self::assertResponseIsSuccessful();
+        self::assertSame('arrival_announced', $this->response($client)['data']['status']);
+    }
+
     public function testCreatesPreparedAnnouncementFromGateSlot(): void
     {
         $client = static::createClient();
@@ -78,6 +115,30 @@ final class AnnouncementApiTest extends WebTestCase
             'direction' => 'departure',
             'originAirportCode' => 'RMO',
             'destinationAirportCode' => 'FCO',
+        ]);
+        self::assertResponseStatusCodeSame(201);
+
+        return $this->response($client)['data']['id'];
+    }
+
+    private function createArrivalFlightDefinition(KernelBrowser $client): string
+    {
+        $this->json($client, 'POST', '/api/v1/flight-definitions', [
+            'flightNumber' => 'AR'.random_int(100, 999),
+            'direction' => 'arrival',
+            'originAirportCode' => 'FCO',
+            'destinationAirportCode' => 'RMO',
+        ]);
+        self::assertResponseStatusCodeSame(201);
+
+        return $this->response($client)['data']['id'];
+    }
+
+    private function createOccurrence(KernelBrowser $client, string $flightId): string
+    {
+        $this->json($client, 'POST', '/api/v1/flight-occurrences', [
+            'flightDefinitionId' => $flightId,
+            'operationalDate' => '2026-06-25',
         ]);
         self::assertResponseStatusCodeSame(201);
 

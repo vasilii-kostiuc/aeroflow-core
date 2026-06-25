@@ -12,8 +12,9 @@ final readonly class CreateAnnouncementCommand
      */
     public function __construct(
         public string $type,
-        public string $flightDefinitionId,
         public array $languages,
+        public ?string $flightDefinitionId = null,
+        public ?string $flightOccurrenceId = null,
         public array $checkInCounterIds = [],
         public ?string $gateId = null,
     ) {

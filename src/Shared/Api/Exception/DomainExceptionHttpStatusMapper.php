@@ -10,15 +10,18 @@ use App\Announcements\Domain\Exception\AudioAssetUnavailableException;
 use App\Announcements\Domain\Exception\DuplicateFlightAnnouncementConfigException;
 use App\Announcements\Domain\Exception\FlightAnnouncementConfigNotFoundException;
 use App\Announcements\Domain\Exception\FlightDefinitionNotFoundException as AnnouncementFlightDefinitionNotFoundException;
+use App\Announcements\Domain\Exception\FlightOccurrenceNotFoundException as AnnouncementFlightOccurrenceNotFoundException;
 use App\AudioCatalog\Domain\Exception\AudioPromptAssetUnavailableException;
 use App\AudioCatalog\Domain\Exception\AudioPromptNotFoundException;
 use App\AudioCatalog\Domain\Exception\DuplicateAudioPromptException;
 use App\AudioCatalog\Domain\Exception\InvalidAudioAssetUploadException;
 use App\FlightOperations\Domain\Exception\AirportNotFoundException;
+use App\FlightOperations\Domain\Exception\DuplicateFlightOccurrenceException;
 use App\FlightOperations\Domain\Exception\DuplicateAirportException;
 use App\FlightOperations\Domain\Exception\DuplicateFlightDefinitionException;
 use App\FlightOperations\Domain\Exception\DuplicateOperationalResourceException;
 use App\FlightOperations\Domain\Exception\FlightDefinitionNotFoundException as FlightOperationsFlightDefinitionNotFoundException;
+use App\FlightOperations\Domain\Exception\FlightOccurrenceNotFoundException;
 use App\FlightOperations\Domain\Exception\OperationalResourceNotFoundException;
 use App\Shared\Domain\DomainException;
 use App\UserAccess\Domain\Exception\InvalidCredentialsException;
@@ -36,11 +39,14 @@ final class DomainExceptionHttpStatusMapper
         InvalidRefreshTokenException::class => Response::HTTP_UNAUTHORIZED,
         UserAlreadyExistsException::class => Response::HTTP_CONFLICT,
         DuplicateFlightDefinitionException::class => Response::HTTP_CONFLICT,
+        DuplicateFlightOccurrenceException::class => Response::HTTP_CONFLICT,
         FlightOperationsFlightDefinitionNotFoundException::class => Response::HTTP_NOT_FOUND,
+        FlightOccurrenceNotFoundException::class => Response::HTTP_NOT_FOUND,
         DuplicateAirportException::class => Response::HTTP_CONFLICT,
         AirportNotFoundException::class => Response::HTTP_NOT_FOUND,
         AnnouncementNotFoundException::class => Response::HTTP_NOT_FOUND,
         AnnouncementFlightDefinitionNotFoundException::class => Response::HTTP_NOT_FOUND,
+        AnnouncementFlightOccurrenceNotFoundException::class => Response::HTTP_NOT_FOUND,
         DuplicateFlightAnnouncementConfigException::class => Response::HTTP_CONFLICT,
         FlightAnnouncementConfigNotFoundException::class => Response::HTTP_NOT_FOUND,
         AnnouncementVariantNotFoundException::class => Response::HTTP_NOT_FOUND,

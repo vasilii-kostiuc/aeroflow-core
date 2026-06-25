@@ -13,6 +13,7 @@ use App\Announcements\Application\ListFlightAnnouncementConfigs\ListFlightAnnoun
 use App\Announcements\Application\Port\AudioCatalog\AudioPromptLookupInterface;
 use App\Announcements\Application\Port\FlightOperations\FlightDefinitionLookupInterface;
 use App\Announcements\Application\Port\FlightOperations\FlightDefinitionSnapshot;
+use App\Announcements\Application\Port\FlightOperations\FlightOccurrenceLookupInterface;
 use App\Announcements\Application\Port\FlightOperations\OperationalResourceLookupInterface;
 use App\Announcements\Application\Service\AnnouncementOperationalResourceResolver;
 use App\Announcements\Application\Service\AnnouncementTemplateResolver;
@@ -52,13 +53,14 @@ final class FlightDefinitionPortHandlersTest extends TestCase
             $announcements,
             $configs,
             $lookup,
+            $this->occurrenceLookup(),
             $this->resourceResolver(),
             new AnnouncementTemplateResolver($audio),
             $this->eventPublisher(),
         )(new CreateAnnouncementCommand(
             'arrival',
-            $flightId->toRfc4122(),
             ['en'],
+            $flightId->toRfc4122(),
         ));
 
         self::assertSame($flightId->toRfc4122(), $result->flightDefinitionId);
@@ -70,6 +72,7 @@ final class FlightDefinitionPortHandlersTest extends TestCase
             $this->createStub(AnnouncementRepositoryInterface::class),
             $this->createStub(FlightAnnouncementConfigRepositoryInterface::class),
             $this->lookup(null),
+            $this->occurrenceLookup(),
             $this->resourceResolver(),
             new AnnouncementTemplateResolver($this->createStub(AudioPromptLookupInterface::class)),
             $this->createStub(DomainEventPublisher::class),
@@ -79,8 +82,8 @@ final class FlightDefinitionPortHandlersTest extends TestCase
 
         $handler(new CreateAnnouncementCommand(
             'arrival',
-            Uuid::v7()->toRfc4122(),
             ['en'],
+            Uuid::v7()->toRfc4122(),
         ));
     }
 
@@ -90,6 +93,7 @@ final class FlightDefinitionPortHandlersTest extends TestCase
             $this->createStub(AnnouncementRepositoryInterface::class),
             $this->createStub(FlightAnnouncementConfigRepositoryInterface::class),
             $this->lookup(new FlightDefinitionSnapshot(false, FlightDirection::Departure)),
+            $this->occurrenceLookup(),
             $this->resourceResolver(),
             new AnnouncementTemplateResolver($this->createStub(AudioPromptLookupInterface::class)),
             $this->createStub(DomainEventPublisher::class),
@@ -99,8 +103,8 @@ final class FlightDefinitionPortHandlersTest extends TestCase
 
         $handler(new CreateAnnouncementCommand(
             'boarding_invitation',
-            Uuid::v7()->toRfc4122(),
             ['en'],
+            Uuid::v7()->toRfc4122(),
             gateId: Uuid::v7()->toRfc4122(),
         ));
     }
@@ -189,6 +193,11 @@ final class FlightDefinitionPortHandlersTest extends TestCase
         return new AnnouncementOperationalResourceResolver(
             $this->createStub(OperationalResourceLookupInterface::class),
         );
+    }
+
+    private function occurrenceLookup(): FlightOccurrenceLookupInterface
+    {
+        return $this->createStub(FlightOccurrenceLookupInterface::class);
     }
 
     private function eventPublisher(): DomainEventPublisher

@@ -35,6 +35,8 @@ final readonly class AnnouncementResult
         public string $type,
         #[OA\Property(format: 'uuid')]
         public string $flightDefinitionId,
+        #[OA\Property(format: 'uuid', nullable: true)]
+        public ?string $flightOccurrenceId,
         #[OA\Property(
             type: 'array',
             items: new OA\Items(
@@ -98,6 +100,7 @@ final readonly class AnnouncementResult
             $announcement->getId()->toRfc4122(),
             $announcement->getType()->value,
             $announcement->getFlightDefinitionId()->toRfc4122(),
+            $announcement->getFlightOccurrenceId()?->toRfc4122(),
             $announcement->getCheckInCounters(),
             $announcement->getGate(),
             $announcement->getLanguages()->toStrings(),

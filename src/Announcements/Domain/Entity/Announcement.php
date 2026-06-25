@@ -31,6 +31,8 @@ final class Announcement extends AggregateRoot
     private AnnouncementType $type;
     #[ORM\Column(type: UuidType::NAME)]
     private Uuid $flightDefinitionId;
+    #[ORM\Column(type: UuidType::NAME, nullable: true)]
+    private ?Uuid $flightOccurrenceId;
     /** @var list<array{id:string,code:string}> */
     #[ORM\Column(type: 'json')]
     private array $checkInCounters;
@@ -66,9 +68,13 @@ final class Announcement extends AggregateRoot
         array $checkInCounters,
         ?array $gate,
         array $audioSequence,
+        ?string $flightOccurrenceId = null,
     ): self {
         if (!Uuid::isValid($flightDefinitionId)) {
             throw InvalidFlightDefinitionIdException::forValue($flightDefinitionId);
+        }
+        if ($flightOccurrenceId !== null && !Uuid::isValid($flightOccurrenceId)) {
+            throw InvalidFlightDefinitionIdException::forValue($flightOccurrenceId);
         }
         if ($type->requiresCheckInCounters() && [] === $checkInCounters) {
             throw InvalidAnnouncementResourcesException::missingCheckInCounters();
@@ -82,6 +88,7 @@ final class Announcement extends AggregateRoot
         $announcement->id = Uuid::v7();
         $announcement->type = $type;
         $announcement->flightDefinitionId = Uuid::fromString($flightDefinitionId);
+        $announcement->flightOccurrenceId = $flightOccurrenceId === null ? null : Uuid::fromString($flightOccurrenceId);
         $announcement->checkInCounters = $checkInCounters;
         $announcement->gate = $gate;
         $announcement->languageCodes = $languages->toStrings();
@@ -125,6 +132,11 @@ final class Announcement extends AggregateRoot
     public function getFlightDefinitionId(): Uuid
     {
         return $this->flightDefinitionId;
+    }
+
+    public function getFlightOccurrenceId(): ?Uuid
+    {
+        return $this->flightOccurrenceId;
     }
 
     /** @return list<array{id:string,code:string}> */

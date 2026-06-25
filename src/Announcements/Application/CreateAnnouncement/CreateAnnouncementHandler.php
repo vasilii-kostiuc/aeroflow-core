@@ -6,6 +6,7 @@ namespace App\Announcements\Application\CreateAnnouncement;
 
 use App\Announcements\Application\AnnouncementResult;
 use App\Announcements\Application\Port\FlightOperations\FlightDefinitionLookupInterface;
+use App\Announcements\Application\Port\FlightOperations\FlightOccurrenceLookupInterface;
 use App\Announcements\Application\Service\AnnouncementOperationalResourceResolver;
 use App\Announcements\Application\Service\AnnouncementTemplateResolver;
 use App\Announcements\Domain\Entity\Announcement;
@@ -13,6 +14,7 @@ use App\Announcements\Domain\Enum\AnnouncementType;
 use App\Announcements\Domain\Enum\FlightAnnouncementType;
 use App\Announcements\Domain\Exception\AnnouncementConfigurationNotReadyException;
 use App\Announcements\Domain\Exception\FlightDefinitionNotFoundException;
+use App\Announcements\Domain\Exception\FlightOccurrenceNotFoundException;
 use App\Announcements\Domain\Exception\InactiveFlightDefinitionException;
 use App\Announcements\Domain\Exception\InvalidFlightDefinitionIdException;
 use App\Announcements\Domain\Repository\AnnouncementRepositoryInterface;
@@ -30,6 +32,7 @@ final readonly class CreateAnnouncementHandler
         private AnnouncementRepositoryInterface $repository,
         private FlightAnnouncementConfigRepositoryInterface $configs,
         private FlightDefinitionLookupInterface $flightDefinitions,
+        private FlightOccurrenceLookupInterface $flightOccurrences,
         private AnnouncementOperationalResourceResolver $resourceResolver,
         private AnnouncementTemplateResolver $resolver,
         private DomainEventPublisher $events,
@@ -38,19 +41,28 @@ final readonly class CreateAnnouncementHandler
 
     public function __invoke(CreateAnnouncementCommand $command): AnnouncementResult
     {
-        if (!Uuid::isValid($command->flightDefinitionId)) {
-            throw InvalidFlightDefinitionIdException::forValue($command->flightDefinitionId);
-        }
-        $flightId = Uuid::fromString($command->flightDefinitionId);
-        $flight = $this->flightDefinitions->findById($flightId);
-        if ($flight === null) {
-            throw FlightDefinitionNotFoundException::withId($command->flightDefinitionId);
-        }
-        if (!$flight->active) {
-            throw InactiveFlightDefinitionException::withId($command->flightDefinitionId);
+        $type = AnnouncementType::from($command->type);
+        $flightDefinitionId = $command->flightDefinitionId;
+
+        if ($command->flightOccurrenceId !== null) {
+            $occurrence = $this->flightOccurrences->findById($command->flightOccurrenceId)
+                ?? throw FlightOccurrenceNotFoundException::withId($command->flightOccurrenceId);
+            $this->flightOccurrences->assertCanLaunch($command->flightOccurrenceId, $type->value);
+            $flightDefinitionId = $occurrence->flightDefinitionId;
         }
 
-        $type = AnnouncementType::from($command->type);
+        if ($flightDefinitionId === null || !Uuid::isValid($flightDefinitionId)) {
+            throw InvalidFlightDefinitionIdException::forValue($flightDefinitionId ?? '');
+        }
+        $flightId = Uuid::fromString($flightDefinitionId);
+        $flight = $this->flightDefinitions->findById($flightId);
+        if ($flight === null) {
+            throw FlightDefinitionNotFoundException::withId($flightDefinitionId);
+        }
+        if (!$flight->active) {
+            throw InactiveFlightDefinitionException::withId($flightDefinitionId);
+        }
+
         $config = $this->configs->findOneForFlightAndType($flightId, FlightAnnouncementType::from($type->value))
             ?? throw AnnouncementConfigurationNotReadyException::withErrors(['configuration_not_found']);
         $languages = AnnouncementLanguages::fromCodes(...array_map(
@@ -68,13 +80,23 @@ final readonly class CreateAnnouncementHandler
         );
         $announcement = Announcement::createPrepared(
             $type,
-            $command->flightDefinitionId,
+            $flightDefinitionId,
             $languages,
             $resources->checkInCounterSnapshots(),
             $resources->gateSnapshot(),
             $audioSequence,
+            $command->flightOccurrenceId,
         );
         $this->repository->save($announcement);
+        if ($command->flightOccurrenceId !== null) {
+            $this->flightOccurrences->recordAnnouncementLaunch(
+                $command->flightOccurrenceId,
+                $type->value,
+                $announcement->getId()->toRfc4122(),
+                $resources->checkInCounterSnapshots(),
+                $resources->gateSnapshot(),
+            );
+        }
         $this->events->publish(...$announcement->pullEvents());
 
         return AnnouncementResult::fromEntity($announcement);

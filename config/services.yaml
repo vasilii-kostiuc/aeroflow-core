@@ -70,6 +70,15 @@ services:
     App\FlightOperations\Application\ListFlightDefinitions\FlightDefinitionListQueryInterface:
         alias: App\FlightOperations\Infrastructure\Persistence\Doctrine\DbalFlightDefinitionListQuery
 
+    App\FlightOperations\Domain\Repository\FlightOccurrenceRepositoryInterface:
+        alias: App\FlightOperations\Infrastructure\Persistence\Doctrine\FlightOccurrenceRepository
+
+    App\FlightOperations\Application\ListFlightOccurrences\FlightOccurrenceListQueryInterface:
+        alias: App\FlightOperations\Infrastructure\Persistence\Doctrine\DbalFlightOccurrenceListQuery
+
+    App\FlightOperations\Application\Dispatcher\DispatcherFlightOccurrenceQueryInterface:
+        alias: App\FlightOperations\Infrastructure\Persistence\Doctrine\DbalDispatcherFlightOccurrenceQuery
+
     App\FlightOperations\Domain\Repository\AirportRepositoryInterface:
         alias: App\FlightOperations\Infrastructure\Persistence\Doctrine\AirportRepository
 
@@ -90,6 +99,9 @@ services:
 
     App\Announcements\Application\Port\FlightOperations\FlightDefinitionLookupInterface:
         alias: App\Announcements\Infrastructure\Integration\FlightOperations\FlightOperationsFlightDefinitionLookup
+
+    App\Announcements\Application\Port\FlightOperations\FlightOccurrenceLookupInterface:
+        alias: App\Announcements\Infrastructure\Integration\FlightOperations\FlightOperationsFlightOccurrenceLookup
 
     App\Announcements\Application\Port\AudioCatalog\AudioPromptLookupInterface:
         alias: App\Announcements\Infrastructure\Integration\AudioCatalog\AudioCatalogAudioPromptLookup

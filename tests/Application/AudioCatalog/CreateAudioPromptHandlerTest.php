@@ -16,10 +16,10 @@ use App\AudioCatalog\Domain\Exception\AudioPromptAssetUnavailableException;
 use App\AudioCatalog\Domain\Exception\DuplicateAudioPromptException;
 use App\AudioCatalog\Domain\Repository\AudioAssetRepositoryInterface;
 use App\AudioCatalog\Domain\Repository\AudioPromptRepositoryInterface;
+use App\Shared\Application\Event\DomainEventPublisher;
 use App\Shared\Domain\ValueObject\LanguageCode;
+use App\Tests\Support\RecordingEventPublisher;
 use PHPUnit\Framework\TestCase;
-use Symfony\Component\Messenger\Envelope;
-use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Uid\Uuid;
 
 final class CreateAudioPromptHandlerTest extends TestCase
@@ -36,7 +36,7 @@ final class CreateAudioPromptHandlerTest extends TestCase
         $handler = new CreateAudioPromptHandler(
             $prompts,
             new AudioPromptAssetGuard($assets),
-            $this->createStub(MessageBusInterface::class),
+            $this->createStub(DomainEventPublisher::class),
         );
 
         $this->expectException(AudioPromptAssetUnavailableException::class);
@@ -56,7 +56,7 @@ final class CreateAudioPromptHandlerTest extends TestCase
         $handler = new CreateAudioPromptHandler(
             $prompts,
             new AudioPromptAssetGuard($assets),
-            $this->createStub(MessageBusInterface::class),
+            $this->createStub(DomainEventPublisher::class),
         );
 
         $this->expectException(DuplicateAudioPromptException::class);
@@ -72,15 +72,9 @@ final class CreateAudioPromptHandlerTest extends TestCase
         $prompts->method('findActive')->willReturn(null);
         $prompts->expects(self::once())->method('save');
 
-        $published = [];
-        $eventBus = $this->createStub(MessageBusInterface::class);
-        $eventBus->method('dispatch')->willReturnCallback(function (object $event) use (&$published): Envelope {
-            $published[] = $event;
+        $events = new RecordingEventPublisher();
 
-            return new Envelope($event);
-        });
-
-        $handler = new CreateAudioPromptHandler($prompts, new AudioPromptAssetGuard($assets), $eventBus);
+        $handler = new CreateAudioPromptHandler($prompts, new AudioPromptAssetGuard($assets), $events);
 
         $result = $handler(new CreateAudioPromptCommand('gate_code', 'A12', 'en', Uuid::v7()->toRfc4122()));
 
@@ -88,8 +82,8 @@ final class CreateAudioPromptHandlerTest extends TestCase
         self::assertSame('gate_code', $result->kind);
         self::assertSame('A12', $result->value);
         self::assertTrue($result->active);
-        self::assertCount(1, $published);
-        self::assertInstanceOf(AudioPromptCreated::class, $published[0]);
+        self::assertCount(1, $events->messages);
+        self::assertInstanceOf(AudioPromptCreated::class, $events->messages[0]);
     }
 
     private function activeAsset(): AudioAsset

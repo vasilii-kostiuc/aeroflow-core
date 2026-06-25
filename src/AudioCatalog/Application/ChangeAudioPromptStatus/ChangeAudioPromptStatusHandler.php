@@ -7,9 +7,8 @@ namespace App\AudioCatalog\Application\ChangeAudioPromptStatus;
 use App\AudioCatalog\Application\AudioPromptResult;
 use App\AudioCatalog\Domain\Exception\AudioPromptNotFoundException;
 use App\AudioCatalog\Domain\Repository\AudioPromptRepositoryInterface;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use App\Shared\Application\Event\DomainEventPublisher;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
-use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Uid\Uuid;
 
 #[AsMessageHandler(bus: 'command.bus')]
@@ -17,8 +16,7 @@ final readonly class ChangeAudioPromptStatusHandler
 {
     public function __construct(
         private AudioPromptRepositoryInterface $prompts,
-        #[Autowire(service: 'event.bus')]
-        private MessageBusInterface $eventBus,
+        private DomainEventPublisher $events,
     ) {
     }
 
@@ -34,9 +32,7 @@ final readonly class ChangeAudioPromptStatusHandler
         $command->active ? $prompt->activate() : $prompt->deactivate();
         $this->prompts->save($prompt);
 
-        foreach ($prompt->pullEvents() as $event) {
-            $this->eventBus->dispatch($event);
-        }
+        $this->events->publish(...$prompt->pullEvents());
 
         return AudioPromptResult::fromEntity($prompt);
     }

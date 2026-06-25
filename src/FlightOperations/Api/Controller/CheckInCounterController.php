@@ -6,7 +6,9 @@ namespace App\FlightOperations\Api\Controller;
 
 use App\FlightOperations\Api\Request\OperationalResourceRequest;
 use App\FlightOperations\Application\CheckInCounterDirectory;
+use App\FlightOperations\Application\OperationalResourceResult;
 use App\Shared\Api\Response\ApiResponse;
+use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -23,12 +25,40 @@ final readonly class CheckInCounterController
 
     #[Route('', methods: ['GET'])]
     #[OA\Parameter(name: 'active', in: 'query', required: false, schema: new OA\Schema(type: 'boolean'))]
+    #[OA\Response(
+        response: 200,
+        description: 'Check-in counters',
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: 'success', type: 'boolean', example: true),
+                new OA\Property(
+                    property: 'data',
+                    type: 'array',
+                    items: new OA\Items(ref: new Model(type: OperationalResourceResult::class)),
+                ),
+            ],
+            type: 'object',
+        ),
+    )]
     public function list(Request $request): JsonResponse
     {
         return ApiResponse::success($this->directory->list($this->activeFilter($request)));
     }
 
     #[Route('', methods: ['POST'])]
+    #[OA\Response(
+        response: 201,
+        description: 'Check-in counter created',
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: 'success', type: 'boolean', example: true),
+                new OA\Property(property: 'data', ref: new Model(type: OperationalResourceResult::class)),
+            ],
+            type: 'object',
+        ),
+    )]
+    #[OA\Response(response: 409, description: 'Duplicate check-in counter code')]
+    #[OA\Response(response: 422, description: 'Validation or domain error')]
     public function create(#[MapRequestPayload] OperationalResourceRequest $request): JsonResponse
     {
         return ApiResponse::created($this->directory->create(
@@ -39,6 +69,20 @@ final readonly class CheckInCounterController
     }
 
     #[Route('/{id}', methods: ['PATCH'])]
+    #[OA\Response(
+        response: 200,
+        description: 'Check-in counter updated',
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: 'success', type: 'boolean', example: true),
+                new OA\Property(property: 'data', ref: new Model(type: OperationalResourceResult::class)),
+            ],
+            type: 'object',
+        ),
+    )]
+    #[OA\Response(response: 404, description: 'Check-in counter not found')]
+    #[OA\Response(response: 409, description: 'Duplicate check-in counter code')]
+    #[OA\Response(response: 422, description: 'Validation or domain error')]
     public function update(string $id, #[MapRequestPayload] OperationalResourceRequest $request): JsonResponse
     {
         return ApiResponse::success($this->directory->update(
@@ -50,12 +94,38 @@ final readonly class CheckInCounterController
     }
 
     #[Route('/{id}/activate', methods: ['POST'])]
+    #[OA\Response(
+        response: 200,
+        description: 'Check-in counter activated',
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: 'success', type: 'boolean', example: true),
+                new OA\Property(property: 'data', ref: new Model(type: OperationalResourceResult::class)),
+            ],
+            type: 'object',
+        ),
+    )]
+    #[OA\Response(response: 404, description: 'Check-in counter not found')]
+    #[OA\Response(response: 422, description: 'Invalid UUID')]
     public function activate(string $id): JsonResponse
     {
         return ApiResponse::success($this->directory->changeStatus($id, true));
     }
 
     #[Route('/{id}/deactivate', methods: ['POST'])]
+    #[OA\Response(
+        response: 200,
+        description: 'Check-in counter deactivated',
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: 'success', type: 'boolean', example: true),
+                new OA\Property(property: 'data', ref: new Model(type: OperationalResourceResult::class)),
+            ],
+            type: 'object',
+        ),
+    )]
+    #[OA\Response(response: 404, description: 'Check-in counter not found')]
+    #[OA\Response(response: 422, description: 'Invalid UUID')]
     public function deactivate(string $id): JsonResponse
     {
         return ApiResponse::success($this->directory->changeStatus($id, false));

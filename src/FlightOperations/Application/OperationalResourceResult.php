@@ -6,16 +6,27 @@ namespace App\FlightOperations\Application;
 
 use App\FlightOperations\Domain\Entity\CheckInCounter;
 use App\FlightOperations\Domain\Entity\Gate;
+use OpenApi\Attributes as OA;
 
+#[OA\Schema(
+    schema: 'OperationalResourceResult',
+    required: ['id', 'code', 'displayName', 'sortOrder', 'active', 'createdAt', 'updatedAt'],
+)]
 final readonly class OperationalResourceResult
 {
     public function __construct(
+        #[OA\Property(format: 'uuid')]
         public string $id,
+        #[OA\Property(example: 'A12')]
         public string $code,
+        #[OA\Property(example: 'Gate A12')]
         public string $displayName,
+        #[OA\Property(minimum: 1)]
         public int $sortOrder,
         public bool $active,
+        #[OA\Property(format: 'date-time')]
         public string $createdAt,
+        #[OA\Property(format: 'date-time')]
         public string $updatedAt,
     ) {
     }

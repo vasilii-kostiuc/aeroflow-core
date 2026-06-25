@@ -12,6 +12,7 @@ use App\AudioCatalog\Application\ListAudioPrompts\ListAudioPromptsQuery;
 use App\AudioCatalog\Application\UpdateAudioPrompt\UpdateAudioPromptCommand;
 use App\Shared\Api\Response\ApiResponse;
 use App\Shared\Application\Bus\ApplicationBus;
+use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -31,6 +32,21 @@ final readonly class AudioPromptController
     #[OA\Parameter(name: 'value', in: 'query', required: false, schema: new OA\Schema(type: 'string'))]
     #[OA\Parameter(name: 'languageCode', in: 'query', required: false, schema: new OA\Schema(type: 'string'))]
     #[OA\Parameter(name: 'active', in: 'query', required: false, schema: new OA\Schema(type: 'boolean'))]
+    #[OA\Response(
+        response: 200,
+        description: 'Audio prompts',
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: 'success', type: 'boolean', example: true),
+                new OA\Property(
+                    property: 'data',
+                    type: 'array',
+                    items: new OA\Items(ref: new Model(type: AudioPromptResult::class)),
+                ),
+            ],
+            type: 'object',
+        ),
+    )]
     public function list(Request $request): JsonResponse
     {
         $active = $request->query->has('active')
@@ -46,6 +62,19 @@ final readonly class AudioPromptController
     }
 
     #[Route('', methods: ['POST'])]
+    #[OA\Response(
+        response: 201,
+        description: 'Audio prompt created',
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: 'success', type: 'boolean', example: true),
+                new OA\Property(property: 'data', ref: new Model(type: AudioPromptResult::class)),
+            ],
+            type: 'object',
+        ),
+    )]
+    #[OA\Response(response: 409, description: 'Duplicate active audio prompt')]
+    #[OA\Response(response: 422, description: 'Validation or domain error')]
     public function create(#[MapRequestPayload] AudioPromptRequest $r): JsonResponse
     {
         return ApiResponse::created($this->bus->handleAs(
@@ -55,6 +84,20 @@ final readonly class AudioPromptController
     }
 
     #[Route('/{id}', methods: ['PATCH'])]
+    #[OA\Response(
+        response: 200,
+        description: 'Audio prompt updated',
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: 'success', type: 'boolean', example: true),
+                new OA\Property(property: 'data', ref: new Model(type: AudioPromptResult::class)),
+            ],
+            type: 'object',
+        ),
+    )]
+    #[OA\Response(response: 404, description: 'Audio prompt not found')]
+    #[OA\Response(response: 409, description: 'Duplicate active audio prompt')]
+    #[OA\Response(response: 422, description: 'Validation or domain error')]
     public function update(string $id, #[MapRequestPayload] AudioPromptRequest $r): JsonResponse
     {
         return ApiResponse::success($this->bus->handleAs(
@@ -64,6 +107,20 @@ final readonly class AudioPromptController
     }
 
     #[Route('/{id}/activate', methods: ['POST'])]
+    #[OA\Response(
+        response: 200,
+        description: 'Audio prompt activated',
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: 'success', type: 'boolean', example: true),
+                new OA\Property(property: 'data', ref: new Model(type: AudioPromptResult::class)),
+            ],
+            type: 'object',
+        ),
+    )]
+    #[OA\Response(response: 404, description: 'Audio prompt not found')]
+    #[OA\Response(response: 409, description: 'Duplicate active audio prompt')]
+    #[OA\Response(response: 422, description: 'Invalid UUID')]
     public function activate(string $id): JsonResponse
     {
         return ApiResponse::success($this->bus->handleAs(
@@ -73,6 +130,19 @@ final readonly class AudioPromptController
     }
 
     #[Route('/{id}/deactivate', methods: ['POST'])]
+    #[OA\Response(
+        response: 200,
+        description: 'Audio prompt deactivated',
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: 'success', type: 'boolean', example: true),
+                new OA\Property(property: 'data', ref: new Model(type: AudioPromptResult::class)),
+            ],
+            type: 'object',
+        ),
+    )]
+    #[OA\Response(response: 404, description: 'Audio prompt not found')]
+    #[OA\Response(response: 422, description: 'Invalid UUID')]
     public function deactivate(string $id): JsonResponse
     {
         return ApiResponse::success($this->bus->handleAs(

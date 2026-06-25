@@ -5,7 +5,23 @@ declare(strict_types=1);
 namespace App\Announcements\Application;
 
 use App\Announcements\Domain\Entity\FlightAnnouncementConfig;
+use Nelmio\ApiDocBundle\Attribute\Model;
+use OpenApi\Attributes as OA;
 
+#[OA\Schema(
+    schema: 'FlightAnnouncementConfigResult',
+    required: [
+        'id',
+        'flightDefinitionId',
+        'announcementType',
+        'enabled',
+        'isValidForDispatcher',
+        'validationErrors',
+        'variants',
+        'createdAt',
+        'updatedAt',
+    ],
+)]
 final readonly class FlightAnnouncementConfigResult
 {
     /**
@@ -13,15 +29,23 @@ final readonly class FlightAnnouncementConfigResult
      * @param list<string>                    $validationErrors
      */
     public function __construct(
+        #[OA\Property(format: 'uuid')]
         public string $id,
+        #[OA\Property(format: 'uuid')]
         public string $flightDefinitionId,
+        #[OA\Property(enum: ['check_in_opening', 'check_in_continuation', 'check_in_closing', 'boarding_invitation', 'arrival'])]
         public string $announcementType,
         public bool $enabled,
+        #[OA\Property(nullable: true, minimum: 1, maximum: 120)]
         public ?int $repeatEveryMinutes,
         public bool $isValidForDispatcher,
+        #[OA\Property(type: 'array', items: new OA\Items(type: 'string'))]
         public array $validationErrors,
+        #[OA\Property(type: 'array', items: new OA\Items(ref: new Model(type: AnnouncementVariantResult::class)))]
         public array $variants,
+        #[OA\Property(format: 'date-time')]
         public string $createdAt,
+        #[OA\Property(format: 'date-time')]
         public string $updatedAt,
     ) {
     }

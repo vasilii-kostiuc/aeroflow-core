@@ -16,6 +16,7 @@ use App\Announcements\Application\UpdateAnnouncementVariant\UpdateAnnouncementVa
 use App\Announcements\Application\UpdateFlightAnnouncementConfig\UpdateFlightAnnouncementConfigCommand;
 use App\Shared\Api\Response\ApiResponse;
 use App\Shared\Application\Bus\ApplicationBus;
+use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -32,6 +33,23 @@ final class FlightAnnouncementConfigController extends AbstractController
     }
 
     #[Route('', name: 'app_flight_announcement_config_list', methods: ['GET'])]
+    #[OA\Response(
+        response: 200,
+        description: 'Flight announcement configs',
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: 'success', type: 'boolean', example: true),
+                new OA\Property(
+                    property: 'data',
+                    type: 'array',
+                    items: new OA\Items(ref: new Model(type: FlightAnnouncementConfigResult::class)),
+                ),
+            ],
+            type: 'object',
+        ),
+    )]
+    #[OA\Response(response: 404, description: 'Flight definition not found')]
+    #[OA\Response(response: 422, description: 'Invalid UUID')]
     public function list(string $flightDefinitionId): JsonResponse
     {
         return ApiResponse::success($this->bus->handleList(
@@ -41,6 +59,20 @@ final class FlightAnnouncementConfigController extends AbstractController
     }
 
     #[Route('', name: 'app_flight_announcement_config_create', methods: ['POST'])]
+    #[OA\Response(
+        response: 201,
+        description: 'Flight announcement config created',
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: 'success', type: 'boolean', example: true),
+                new OA\Property(property: 'data', ref: new Model(type: FlightAnnouncementConfigResult::class)),
+            ],
+            type: 'object',
+        ),
+    )]
+    #[OA\Response(response: 404, description: 'Flight definition not found')]
+    #[OA\Response(response: 409, description: 'Duplicate announcement config')]
+    #[OA\Response(response: 422, description: 'Validation or domain error')]
     public function create(
         string $flightDefinitionId,
         #[MapRequestPayload]
@@ -58,6 +90,19 @@ final class FlightAnnouncementConfigController extends AbstractController
     }
 
     #[Route('/{configId}', name: 'app_flight_announcement_config_update', methods: ['PATCH'])]
+    #[OA\Response(
+        response: 200,
+        description: 'Flight announcement config updated',
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: 'success', type: 'boolean', example: true),
+                new OA\Property(property: 'data', ref: new Model(type: FlightAnnouncementConfigResult::class)),
+            ],
+            type: 'object',
+        ),
+    )]
+    #[OA\Response(response: 404, description: 'Flight definition or config not found')]
+    #[OA\Response(response: 422, description: 'Validation or domain error')]
     public function update(
         string $flightDefinitionId,
         string $configId,
@@ -76,6 +121,20 @@ final class FlightAnnouncementConfigController extends AbstractController
     }
 
     #[Route('/{configId}/variants', name: 'app_flight_announcement_variant_add', methods: ['POST'])]
+    #[OA\Response(
+        response: 201,
+        description: 'Announcement variant added',
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: 'success', type: 'boolean', example: true),
+                new OA\Property(property: 'data', ref: new Model(type: FlightAnnouncementConfigResult::class)),
+            ],
+            type: 'object',
+        ),
+    )]
+    #[OA\Response(response: 404, description: 'Flight definition, config, or audio asset not found')]
+    #[OA\Response(response: 409, description: 'Duplicate variant language')]
+    #[OA\Response(response: 422, description: 'Validation or domain error')]
     public function addVariant(
         string $flightDefinitionId,
         string $configId,
@@ -96,6 +155,20 @@ final class FlightAnnouncementConfigController extends AbstractController
     }
 
     #[Route('/{configId}/variants/{variantId}', name: 'app_flight_announcement_variant_update', methods: ['PATCH'])]
+    #[OA\Response(
+        response: 200,
+        description: 'Announcement variant updated',
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: 'success', type: 'boolean', example: true),
+                new OA\Property(property: 'data', ref: new Model(type: FlightAnnouncementConfigResult::class)),
+            ],
+            type: 'object',
+        ),
+    )]
+    #[OA\Response(response: 404, description: 'Flight definition, config, variant, or audio asset not found')]
+    #[OA\Response(response: 409, description: 'Duplicate variant language')]
+    #[OA\Response(response: 422, description: 'Validation or domain error')]
     public function updateVariant(
         string $flightDefinitionId,
         string $configId,
@@ -118,6 +191,19 @@ final class FlightAnnouncementConfigController extends AbstractController
     }
 
     #[Route('/{configId}/variants/{variantId}', name: 'app_flight_announcement_variant_delete', methods: ['DELETE'])]
+    #[OA\Response(
+        response: 200,
+        description: 'Announcement variant deleted',
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: 'success', type: 'boolean', example: true),
+                new OA\Property(property: 'data', ref: new Model(type: FlightAnnouncementConfigResult::class)),
+            ],
+            type: 'object',
+        ),
+    )]
+    #[OA\Response(response: 404, description: 'Flight definition, config, or variant not found')]
+    #[OA\Response(response: 422, description: 'Invalid UUID')]
     public function deleteVariant(
         string $flightDefinitionId,
         string $configId,

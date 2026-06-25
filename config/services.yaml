@@ -9,6 +9,25 @@
 parameters:
     user_access.refresh_token_ttl: '+30 days'
     audio_catalog.storage_directory: '%kernel.project_dir%/var/audio-assets'
+    localization.languages:
+        -
+            code: 'ro-MD'
+            name: 'Romanian (Moldova)'
+            nativeName: 'Romana'
+            active: true
+            sortOrder: 1
+        -
+            code: 'ru'
+            name: 'Russian'
+            nativeName: 'Русский'
+            active: true
+            sortOrder: 2
+        -
+            code: 'en'
+            name: 'English'
+            nativeName: 'English'
+            active: true
+            sortOrder: 3
 
 services:
     # default configuration for services in *this* file
@@ -87,9 +106,16 @@ services:
     App\AudioCatalog\Application\Storage\AudioAssetStorageInterface:
         alias: App\AudioCatalog\Infrastructure\Storage\LocalAudioAssetStorage
 
+    App\Localization\Application\LanguageProviderInterface:
+        alias: App\Localization\Infrastructure\Config\ConfiguredLanguageProvider
+
     App\AudioCatalog\Infrastructure\Storage\LocalAudioAssetStorage:
         arguments:
             $storageDirectory: '%audio_catalog.storage_directory%'
+
+    App\Localization\Infrastructure\Config\ConfiguredLanguageProvider:
+        arguments:
+            $languages: '%localization.languages%'
 
 when@test:
     parameters:

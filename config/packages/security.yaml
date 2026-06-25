@@ -24,6 +24,7 @@ security:
         - { path: ^/api/v1/login$, roles: PUBLIC_ACCESS }
         - { path: ^/api/v1/token/refresh$, roles: PUBLIC_ACCESS }
         - { path: ^/api/v1/logout$, roles: PUBLIC_ACCESS }
+        - { path: ^/api/v1/languages$, roles: PUBLIC_ACCESS }
         - { path: ^/api/v1, roles: IS_AUTHENTICATED_FULLY }
 
 when@test:

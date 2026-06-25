@@ -18,6 +18,7 @@ final class BoundedContextDependenciesTest extends TestCase
         'Announcements',
         'AudioCatalog',
         'FlightOperations',
+        'Localization',
         'UserAccess',
     ];
 

@@ -9,16 +9,14 @@ use App\FlightOperations\Domain\Exception\DuplicateOperationalResourceException;
 use App\FlightOperations\Domain\Exception\OperationalResourceNotFoundException;
 use App\FlightOperations\Domain\Repository\GateRepositoryInterface;
 use App\FlightOperations\Domain\ValueObject\OperationalResourceCode;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
-use Symfony\Component\Messenger\MessageBusInterface;
+use App\Shared\Application\Event\DomainEventPublisher;
 use Symfony\Component\Uid\Uuid;
 
 final readonly class GateDirectory
 {
     public function __construct(
         private GateRepositoryInterface $gates,
-        #[Autowire(service: 'event.bus')]
-        private MessageBusInterface $eventBus,
+        private DomainEventPublisher $events,
     ) {
     }
 
@@ -77,8 +75,6 @@ final readonly class GateDirectory
 
     private function dispatch(Gate $gate): void
     {
-        foreach ($gate->pullEvents() as $event) {
-            $this->eventBus->dispatch($event);
-        }
+        $this->events->publish(...$gate->pullEvents());
     }
 }

@@ -12,9 +12,8 @@ use App\Announcements\Domain\Exception\FlightDefinitionNotFoundException;
 use App\Announcements\Domain\Exception\IncompatibleFlightAnnouncementTypeException;
 use App\Announcements\Domain\Exception\InvalidFlightDefinitionIdException;
 use App\Announcements\Domain\Repository\FlightAnnouncementConfigRepositoryInterface;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use App\Shared\Application\Event\DomainEventPublisher;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
-use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Uid\Uuid;
 
 #[AsMessageHandler(bus: 'command.bus')]
@@ -23,8 +22,7 @@ final readonly class UpdateFlightAnnouncementConfigHandler
     public function __construct(
         private FlightAnnouncementConfigRepositoryInterface $repository,
         private FlightDefinitionLookupInterface $flightDefinitions,
-        #[Autowire(service: 'event.bus')]
-        private MessageBusInterface $eventBus,
+        private DomainEventPublisher $events,
     ) {
     }
 
@@ -64,8 +62,6 @@ final readonly class UpdateFlightAnnouncementConfigHandler
 
     private function dispatchEvents(FlightAnnouncementConfig $config): void
     {
-        foreach ($config->pullEvents() as $event) {
-            $this->eventBus->dispatch($event);
-        }
+        $this->events->publish(...$config->pullEvents());
     }
 }

@@ -18,10 +18,9 @@ use App\Announcements\Domain\Exception\InvalidFlightDefinitionIdException;
 use App\Announcements\Domain\Repository\AnnouncementRepositoryInterface;
 use App\Announcements\Domain\Repository\FlightAnnouncementConfigRepositoryInterface;
 use App\Announcements\Domain\ValueObject\AnnouncementLanguages;
+use App\Shared\Application\Event\DomainEventPublisher;
 use App\Shared\Domain\ValueObject\LanguageCode;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
-use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Uid\Uuid;
 
 #[AsMessageHandler(bus: 'command.bus')]
@@ -33,8 +32,7 @@ final readonly class CreateAnnouncementHandler
         private FlightDefinitionLookupInterface $flightDefinitions,
         private AnnouncementOperationalResourceResolver $resourceResolver,
         private AnnouncementTemplateResolver $resolver,
-        #[Autowire(service: 'event.bus')]
-        private MessageBusInterface $eventBus,
+        private DomainEventPublisher $events,
     ) {
     }
 
@@ -77,9 +75,7 @@ final readonly class CreateAnnouncementHandler
             $audioSequence,
         );
         $this->repository->save($announcement);
-        foreach ($announcement->pullEvents() as $event) {
-            $this->eventBus->dispatch($event);
-        }
+        $this->events->publish(...$announcement->pullEvents());
 
         return AnnouncementResult::fromEntity($announcement);
     }

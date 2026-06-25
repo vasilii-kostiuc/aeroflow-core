@@ -12,8 +12,8 @@ use App\Announcements\Domain\Entity\FlightAnnouncementConfig;
 use App\Announcements\Domain\Enum\FlightAnnouncementType;
 use App\Announcements\Domain\Exception\AudioAssetUnavailableException;
 use App\Announcements\Domain\Repository\FlightAnnouncementConfigRepositoryInterface;
+use App\Shared\Application\Event\DomainEventPublisher;
 use PHPUnit\Framework\TestCase;
-use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Uid\Uuid;
 
 final class AddAnnouncementVariantHandlerTest extends TestCase
@@ -39,7 +39,7 @@ final class AddAnnouncementVariantHandlerTest extends TestCase
         $handler = new AddAnnouncementVariantHandler(
             $configs,
             new AnnouncementSegmentsValidator($assets),
-            $this->createStub(MessageBusInterface::class),
+            $this->createStub(DomainEventPublisher::class),
         );
 
         $this->expectException(AudioAssetUnavailableException::class);

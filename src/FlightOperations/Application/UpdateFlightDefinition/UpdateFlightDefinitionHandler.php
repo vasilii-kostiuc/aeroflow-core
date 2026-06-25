@@ -11,10 +11,9 @@ use App\FlightOperations\Domain\Repository\FlightDefinitionRepositoryInterface;
 use App\FlightOperations\Domain\Service\FlightDefinitionUniquenessChecker;
 use App\FlightOperations\Domain\ValueObject\AirportCode;
 use App\FlightOperations\Domain\ValueObject\FlightNumber;
+use App\Shared\Application\Event\DomainEventPublisher;
 use App\Shared\Application\Uuid\UuidParser;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
-use Symfony\Component\Messenger\MessageBusInterface;
 
 #[AsMessageHandler(bus: 'command.bus')]
 final readonly class UpdateFlightDefinitionHandler
@@ -22,8 +21,7 @@ final readonly class UpdateFlightDefinitionHandler
     public function __construct(
         private FlightDefinitionRepositoryInterface $repository,
         private FlightDefinitionUniquenessChecker $uniquenessChecker,
-        #[Autowire(service: 'event.bus')]
-        private MessageBusInterface $eventBus,
+        private DomainEventPublisher $events,
     ) {
     }
 
@@ -42,9 +40,7 @@ final readonly class UpdateFlightDefinitionHandler
         if ($flightDefinition->updateDetails($flightNumber, $direction, $origin, $destination)) {
             $this->repository->save($flightDefinition);
 
-            foreach ($flightDefinition->pullEvents() as $event) {
-                $this->eventBus->dispatch($event);
-            }
+            $this->events->publish(...$flightDefinition->pullEvents());
         }
 
         return FlightDefinitionResult::fromEntity($flightDefinition);

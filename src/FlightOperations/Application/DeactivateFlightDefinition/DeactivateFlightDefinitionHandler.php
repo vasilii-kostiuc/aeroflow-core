@@ -7,18 +7,16 @@ namespace App\FlightOperations\Application\DeactivateFlightDefinition;
 use App\FlightOperations\Application\FlightDefinitionResult;
 use App\FlightOperations\Domain\Exception\FlightDefinitionNotFoundException;
 use App\FlightOperations\Domain\Repository\FlightDefinitionRepositoryInterface;
+use App\Shared\Application\Event\DomainEventPublisher;
 use App\Shared\Application\Uuid\UuidParser;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
-use Symfony\Component\Messenger\MessageBusInterface;
 
 #[AsMessageHandler(bus: 'command.bus')]
 final readonly class DeactivateFlightDefinitionHandler
 {
     public function __construct(
         private FlightDefinitionRepositoryInterface $repository,
-        #[Autowire(service: 'event.bus')]
-        private MessageBusInterface $eventBus,
+        private DomainEventPublisher $events,
     ) {
     }
 
@@ -31,9 +29,7 @@ final readonly class DeactivateFlightDefinitionHandler
         if ($flightDefinition->deactivate()) {
             $this->repository->save($flightDefinition);
 
-            foreach ($flightDefinition->pullEvents() as $event) {
-                $this->eventBus->dispatch($event);
-            }
+            $this->events->publish(...$flightDefinition->pullEvents());
         }
 
         return FlightDefinitionResult::fromEntity($flightDefinition);

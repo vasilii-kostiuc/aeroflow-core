@@ -26,9 +26,8 @@ use App\Announcements\Domain\Exception\InactiveFlightDefinitionException;
 use App\Announcements\Domain\Exception\IncompatibleFlightAnnouncementTypeException;
 use App\Announcements\Domain\Repository\AnnouncementRepositoryInterface;
 use App\Announcements\Domain\Repository\FlightAnnouncementConfigRepositoryInterface;
+use App\Shared\Application\Event\DomainEventPublisher;
 use PHPUnit\Framework\TestCase;
-use Symfony\Component\Messenger\Envelope;
-use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Uid\Uuid;
 
 final class FlightDefinitionPortHandlersTest extends TestCase
@@ -55,7 +54,7 @@ final class FlightDefinitionPortHandlersTest extends TestCase
             $lookup,
             $this->resourceResolver(),
             new AnnouncementTemplateResolver($audio),
-            $this->messageBus(),
+            $this->eventPublisher(),
         )(new CreateAnnouncementCommand(
             'arrival',
             $flightId->toRfc4122(),
@@ -73,7 +72,7 @@ final class FlightDefinitionPortHandlersTest extends TestCase
             $this->lookup(null),
             $this->resourceResolver(),
             new AnnouncementTemplateResolver($this->createStub(AudioPromptLookupInterface::class)),
-            $this->createStub(MessageBusInterface::class),
+            $this->createStub(DomainEventPublisher::class),
         );
 
         $this->expectException(FlightDefinitionNotFoundException::class);
@@ -93,7 +92,7 @@ final class FlightDefinitionPortHandlersTest extends TestCase
             $this->lookup(new FlightDefinitionSnapshot(false, FlightDirection::Departure)),
             $this->resourceResolver(),
             new AnnouncementTemplateResolver($this->createStub(AudioPromptLookupInterface::class)),
-            $this->createStub(MessageBusInterface::class),
+            $this->createStub(DomainEventPublisher::class),
         );
 
         $this->expectException(InactiveFlightDefinitionException::class);
@@ -113,7 +112,7 @@ final class FlightDefinitionPortHandlersTest extends TestCase
         $handler = new CreateFlightAnnouncementConfigHandler(
             $configs,
             $this->lookup(new FlightDefinitionSnapshot(true, FlightDirection::Arrival)),
-            $this->createStub(MessageBusInterface::class),
+            $this->createStub(DomainEventPublisher::class),
         );
 
         $this->expectException(IncompatibleFlightAnnouncementTypeException::class);
@@ -142,7 +141,7 @@ final class FlightDefinitionPortHandlersTest extends TestCase
         $handler = new UpdateFlightAnnouncementConfigHandler(
             $configs,
             $this->lookup(new FlightDefinitionSnapshot(true, FlightDirection::Arrival)),
-            $this->createStub(MessageBusInterface::class),
+            $this->createStub(DomainEventPublisher::class),
         );
 
         $this->expectException(IncompatibleFlightAnnouncementTypeException::class);
@@ -192,13 +191,8 @@ final class FlightDefinitionPortHandlersTest extends TestCase
         );
     }
 
-    private function messageBus(): MessageBusInterface
+    private function eventPublisher(): DomainEventPublisher
     {
-        $messageBus = $this->createStub(MessageBusInterface::class);
-        $messageBus->method('dispatch')->willReturnCallback(
-            static fn (object $message): Envelope => new Envelope($message),
-        );
-
-        return $messageBus;
+        return $this->createStub(DomainEventPublisher::class);
     }
 }

@@ -4,14 +4,13 @@ declare(strict_types=1);
 
 namespace App\UserAccess\Application\LoginUser;
 
+use App\Shared\Application\Event\DomainEventPublisher;
 use App\UserAccess\Application\Security\AuthTokenIssuer;
 use App\UserAccess\Application\Security\PasswordHasherInterface;
 use App\UserAccess\Domain\Event\UserLoggedIn;
 use App\UserAccess\Domain\Exception\InvalidCredentialsException;
 use App\UserAccess\Domain\Repository\UserRepositoryInterface;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
-use Symfony\Component\Messenger\MessageBusInterface;
 
 #[AsMessageHandler(bus: 'command.bus')]
 final readonly class LoginUserHandler
@@ -20,8 +19,7 @@ final readonly class LoginUserHandler
         private UserRepositoryInterface $userRepository,
         private PasswordHasherInterface $passwordHasher,
         private AuthTokenIssuer $authTokenIssuer,
-        #[Autowire(service: 'event.bus')]
-        private MessageBusInterface $eventBus,
+        private DomainEventPublisher $events,
     ) {
     }
 
@@ -34,7 +32,7 @@ final readonly class LoginUserHandler
         }
 
         $tokenPair = $this->authTokenIssuer->issueFor($user);
-        $this->eventBus->dispatch(new UserLoggedIn((string) $user->getId(), (string) $user->getEmail()));
+        $this->events->publish(new UserLoggedIn((string) $user->getId(), (string) $user->getEmail()));
 
         return new LoginUserResult(
             accessToken: $tokenPair->accessToken,

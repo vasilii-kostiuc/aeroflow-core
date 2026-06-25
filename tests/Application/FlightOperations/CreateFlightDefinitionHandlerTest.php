@@ -14,7 +14,7 @@ use App\FlightOperations\Domain\Service\FlightDefinitionUniquenessChecker;
 use App\FlightOperations\Domain\ValueObject\AirportCode;
 use App\FlightOperations\Domain\ValueObject\FlightNumber;
 use App\Tests\Application\FlightOperations\Support\InMemoryFlightDefinitionRepository;
-use App\Tests\Application\UserAccess\Support\RecordingMessageBus;
+use App\Tests\Support\RecordingEventPublisher;
 use PHPUnit\Framework\TestCase;
 
 final class CreateFlightDefinitionHandlerTest extends TestCase
@@ -22,7 +22,7 @@ final class CreateFlightDefinitionHandlerTest extends TestCase
     public function testCreatesSavesAndPublishesEvent(): void
     {
         $repository = new InMemoryFlightDefinitionRepository();
-        $eventBus = new RecordingMessageBus();
+        $eventBus = new RecordingEventPublisher();
         $handler = new CreateFlightDefinitionHandler(
             $repository,
             new FlightDefinitionUniquenessChecker($repository),
@@ -50,7 +50,7 @@ final class CreateFlightDefinitionHandlerTest extends TestCase
         $handler = new CreateFlightDefinitionHandler(
             $repository,
             new FlightDefinitionUniquenessChecker($repository),
-            new RecordingMessageBus(),
+            new RecordingEventPublisher(),
         );
 
         $this->expectException(DuplicateFlightDefinitionException::class);

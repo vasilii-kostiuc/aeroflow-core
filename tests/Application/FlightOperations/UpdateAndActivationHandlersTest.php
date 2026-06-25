@@ -17,7 +17,7 @@ use App\FlightOperations\Domain\Service\FlightDefinitionUniquenessChecker;
 use App\FlightOperations\Domain\ValueObject\AirportCode;
 use App\FlightOperations\Domain\ValueObject\FlightNumber;
 use App\Tests\Application\FlightOperations\Support\InMemoryFlightDefinitionRepository;
-use App\Tests\Application\UserAccess\Support\RecordingMessageBus;
+use App\Tests\Support\RecordingEventPublisher;
 use PHPUnit\Framework\TestCase;
 
 final class UpdateAndActivationHandlersTest extends TestCase
@@ -25,7 +25,7 @@ final class UpdateAndActivationHandlersTest extends TestCase
     public function testNoOpUpdateDoesNotSaveOrPublish(): void
     {
         [$definition, $repository] = $this->definitionAndRepository();
-        $eventBus = new RecordingMessageBus();
+        $eventBus = new RecordingEventPublisher();
         $handler = new UpdateFlightDefinitionHandler(
             $repository,
             new FlightDefinitionUniquenessChecker($repository),
@@ -48,7 +48,7 @@ final class UpdateAndActivationHandlersTest extends TestCase
     public function testDeactivateAndActivateAreIdempotent(): void
     {
         [$definition, $repository] = $this->definitionAndRepository();
-        $eventBus = new RecordingMessageBus();
+        $eventBus = new RecordingEventPublisher();
         $deactivate = new DeactivateFlightDefinitionHandler($repository, $eventBus);
         $activate = new ActivateFlightDefinitionHandler($repository, $eventBus);
         $id = $definition->getId()->toRfc4122();
@@ -75,7 +75,7 @@ final class UpdateAndActivationHandlersTest extends TestCase
         $handler = new UpdateFlightDefinitionHandler(
             $repository,
             new FlightDefinitionUniquenessChecker($repository),
-            new RecordingMessageBus(),
+            new RecordingEventPublisher(),
         );
 
         $this->expectException(DuplicateFlightDefinitionException::class);

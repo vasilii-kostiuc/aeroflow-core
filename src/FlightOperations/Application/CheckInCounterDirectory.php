@@ -9,16 +9,14 @@ use App\FlightOperations\Domain\Exception\DuplicateOperationalResourceException;
 use App\FlightOperations\Domain\Exception\OperationalResourceNotFoundException;
 use App\FlightOperations\Domain\Repository\CheckInCounterRepositoryInterface;
 use App\FlightOperations\Domain\ValueObject\OperationalResourceCode;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
-use Symfony\Component\Messenger\MessageBusInterface;
+use App\Shared\Application\Event\DomainEventPublisher;
 use Symfony\Component\Uid\Uuid;
 
 final readonly class CheckInCounterDirectory
 {
     public function __construct(
         private CheckInCounterRepositoryInterface $counters,
-        #[Autowire(service: 'event.bus')]
-        private MessageBusInterface $eventBus,
+        private DomainEventPublisher $events,
     ) {
     }
 
@@ -77,8 +75,6 @@ final readonly class CheckInCounterDirectory
 
     private function dispatch(CheckInCounter $counter): void
     {
-        foreach ($counter->pullEvents() as $event) {
-            $this->eventBus->dispatch($event);
-        }
+        $this->events->publish(...$counter->pullEvents());
     }
 }

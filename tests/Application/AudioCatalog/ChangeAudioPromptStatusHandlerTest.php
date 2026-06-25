@@ -11,10 +11,10 @@ use App\AudioCatalog\Domain\Enum\AudioPromptKind;
 use App\AudioCatalog\Domain\Event\AudioPromptDeactivated;
 use App\AudioCatalog\Domain\Exception\AudioPromptNotFoundException;
 use App\AudioCatalog\Domain\Repository\AudioPromptRepositoryInterface;
+use App\Shared\Application\Event\DomainEventPublisher;
 use App\Shared\Domain\ValueObject\LanguageCode;
+use App\Tests\Support\RecordingEventPublisher;
 use PHPUnit\Framework\TestCase;
-use Symfony\Component\Messenger\Envelope;
-use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Uid\Uuid;
 
 final class ChangeAudioPromptStatusHandlerTest extends TestCase
@@ -25,7 +25,7 @@ final class ChangeAudioPromptStatusHandlerTest extends TestCase
         $prompts->method('findById')->willReturn(null);
         $prompts->expects(self::never())->method('save');
 
-        $handler = new ChangeAudioPromptStatusHandler($prompts, $this->createStub(MessageBusInterface::class));
+        $handler = new ChangeAudioPromptStatusHandler($prompts, $this->createStub(DomainEventPublisher::class));
 
         $this->expectException(AudioPromptNotFoundException::class);
         $handler(new ChangeAudioPromptStatusCommand(Uuid::v7()->toRfc4122(), false));
@@ -40,20 +40,14 @@ final class ChangeAudioPromptStatusHandlerTest extends TestCase
         $prompts->method('findById')->willReturn($prompt);
         $prompts->expects(self::once())->method('save');
 
-        $published = [];
-        $eventBus = $this->createStub(MessageBusInterface::class);
-        $eventBus->method('dispatch')->willReturnCallback(function (object $event) use (&$published): Envelope {
-            $published[] = $event;
+        $events = new RecordingEventPublisher();
 
-            return new Envelope($event);
-        });
-
-        $handler = new ChangeAudioPromptStatusHandler($prompts, $eventBus);
+        $handler = new ChangeAudioPromptStatusHandler($prompts, $events);
 
         $result = $handler(new ChangeAudioPromptStatusCommand($prompt->getId()->toRfc4122(), false));
 
         self::assertFalse($result->active);
-        self::assertCount(1, $published);
-        self::assertInstanceOf(AudioPromptDeactivated::class, $published[0]);
+        self::assertCount(1, $events->messages);
+        self::assertInstanceOf(AudioPromptDeactivated::class, $events->messages[0]);
     }
 }

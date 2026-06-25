@@ -6,7 +6,7 @@ namespace App\Tests\Application\UserAccess;
 
 use App\Tests\Application\UserAccess\Support\InMemoryRefreshTokenRepository;
 use App\Tests\Application\UserAccess\Support\PlainRefreshTokenHasher;
-use App\Tests\Application\UserAccess\Support\RecordingMessageBus;
+use App\Tests\Support\RecordingEventPublisher;
 use App\UserAccess\Application\LogoutUser\LogoutUserCommand;
 use App\UserAccess\Application\LogoutUser\LogoutUserHandler;
 use App\UserAccess\Domain\Entity\RefreshToken;
@@ -27,7 +27,7 @@ final class LogoutUserHandlerTest extends TestCase
             new DateTimeImmutable('+1 day'),
         );
         $repository->saveAll([$token]);
-        $eventBus = new RecordingMessageBus();
+        $eventBus = new RecordingEventPublisher();
         $handler = new LogoutUserHandler($repository, new PlainRefreshTokenHasher(), $eventBus);
 
         $handler(new LogoutUserCommand('current-refresh-token'));
@@ -42,7 +42,7 @@ final class LogoutUserHandlerTest extends TestCase
         $handler = new LogoutUserHandler(
             new InMemoryRefreshTokenRepository(),
             new PlainRefreshTokenHasher(),
-            new RecordingMessageBus(),
+            new RecordingEventPublisher(),
         );
 
         $this->expectException(InvalidRefreshTokenException::class);

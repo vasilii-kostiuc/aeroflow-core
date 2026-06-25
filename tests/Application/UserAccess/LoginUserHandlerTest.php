@@ -10,7 +10,7 @@ use App\Tests\Application\UserAccess\Support\InMemoryRefreshTokenRepository;
 use App\Tests\Application\UserAccess\Support\InMemoryUserRepository;
 use App\Tests\Application\UserAccess\Support\PlainRefreshTokenHasher;
 use App\Tests\Application\UserAccess\Support\QueueRefreshTokenGenerator;
-use App\Tests\Application\UserAccess\Support\RecordingMessageBus;
+use App\Tests\Support\RecordingEventPublisher;
 use App\UserAccess\Application\LoginUser\LoginUserCommand;
 use App\UserAccess\Application\LoginUser\LoginUserHandler;
 use App\UserAccess\Application\Security\AuthTokenIssuer;
@@ -27,7 +27,7 @@ final class LoginUserHandlerTest extends TestCase
         $user = User::register('dispatcher@example.com', 'hashed-password123');
         $user->pullEvents();
         $userRepository->save($user);
-        $eventBus = new RecordingMessageBus();
+        $eventBus = new RecordingEventPublisher();
 
         $handler = new LoginUserHandler(
             $userRepository,
@@ -83,7 +83,7 @@ final class LoginUserHandlerTest extends TestCase
                 new InMemoryRefreshTokenRepository(),
                 '+30 days',
             ),
-            new RecordingMessageBus(),
+            new RecordingEventPublisher(),
         );
     }
 }

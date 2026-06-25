@@ -10,7 +10,7 @@ use App\Tests\Application\UserAccess\Support\InMemoryRefreshTokenRepository;
 use App\Tests\Application\UserAccess\Support\InMemoryUserRepository;
 use App\Tests\Application\UserAccess\Support\PlainRefreshTokenHasher;
 use App\Tests\Application\UserAccess\Support\QueueRefreshTokenGenerator;
-use App\Tests\Application\UserAccess\Support\RecordingMessageBus;
+use App\Tests\Support\RecordingEventPublisher;
 use App\UserAccess\Application\RegisterUser\RegisterUserCommand;
 use App\UserAccess\Application\RegisterUser\RegisterUserHandler;
 use App\UserAccess\Application\Security\AuthTokenIssuer;
@@ -25,7 +25,7 @@ final class RegisterUserHandlerTest extends TestCase
     {
         $userRepository = new InMemoryUserRepository();
         $refreshTokenRepository = new InMemoryRefreshTokenRepository();
-        $eventBus = new RecordingMessageBus();
+        $eventBus = new RecordingEventPublisher();
         $handler = $this->createHandler($userRepository, $refreshTokenRepository, $eventBus);
 
         $result = $handler(new RegisterUserCommand('dispatcher@example.com', 'password123'));
@@ -50,7 +50,7 @@ final class RegisterUserHandlerTest extends TestCase
     {
         $userRepository = new InMemoryUserRepository();
         $userRepository->save(\App\UserAccess\Domain\Entity\User::register('dispatcher@example.com', 'hashed-password'));
-        $handler = $this->createHandler($userRepository, new InMemoryRefreshTokenRepository(), new RecordingMessageBus());
+        $handler = $this->createHandler($userRepository, new InMemoryRefreshTokenRepository(), new RecordingEventPublisher());
 
         $this->expectException(UserAlreadyExistsException::class);
 
@@ -60,7 +60,7 @@ final class RegisterUserHandlerTest extends TestCase
     private function createHandler(
         UserRepositoryInterface $userRepository,
         InMemoryRefreshTokenRepository $refreshTokenRepository,
-        RecordingMessageBus $eventBus,
+        RecordingEventPublisher $eventBus,
     ): RegisterUserHandler {
         return new RegisterUserHandler(
             $userRepository,

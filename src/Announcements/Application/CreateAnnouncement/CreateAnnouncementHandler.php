@@ -38,19 +38,21 @@ final readonly class CreateAnnouncementHandler
 
     public function __invoke(CreateAnnouncementCommand $command): AnnouncementResult
     {
-        if (!Uuid::isValid($command->flightDefinitionId)) {
-            throw InvalidFlightDefinitionIdException::forValue($command->flightDefinitionId);
+        $type = AnnouncementType::from($command->type);
+        $flightDefinitionId = $command->flightDefinitionId;
+
+        if ($flightDefinitionId === null || !Uuid::isValid($flightDefinitionId)) {
+            throw InvalidFlightDefinitionIdException::forValue($flightDefinitionId ?? '');
         }
-        $flightId = Uuid::fromString($command->flightDefinitionId);
+        $flightId = Uuid::fromString($flightDefinitionId);
         $flight = $this->flightDefinitions->findById($flightId);
         if ($flight === null) {
-            throw FlightDefinitionNotFoundException::withId($command->flightDefinitionId);
+            throw FlightDefinitionNotFoundException::withId($flightDefinitionId);
         }
         if (!$flight->active) {
-            throw InactiveFlightDefinitionException::withId($command->flightDefinitionId);
+            throw InactiveFlightDefinitionException::withId($flightDefinitionId);
         }
 
-        $type = AnnouncementType::from($command->type);
         $config = $this->configs->findOneForFlightAndType($flightId, FlightAnnouncementType::from($type->value))
             ?? throw AnnouncementConfigurationNotReadyException::withErrors(['configuration_not_found']);
         $languages = AnnouncementLanguages::fromCodes(...array_map(
@@ -68,11 +70,12 @@ final readonly class CreateAnnouncementHandler
         );
         $announcement = Announcement::createPrepared(
             $type,
-            $command->flightDefinitionId,
+            $flightDefinitionId,
             $languages,
             $resources->checkInCounterSnapshots(),
             $resources->gateSnapshot(),
             $audioSequence,
+            $command->flightOccurrenceId,
         );
         $this->repository->save($announcement);
         $this->events->publish(...$announcement->pullEvents());

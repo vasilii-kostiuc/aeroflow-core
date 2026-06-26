@@ -6,7 +6,16 @@ framework:
         default_bus: command.bus
 
         buses:
-            command.bus: ~
+            command.bus:
+                # Order matters: the domain-event middleware wraps doctrine_transaction
+                # so buffered events are released only after the transaction commits.
+                middleware:
+                    # Buffer domain events and publish them after the commit (discard on rollback).
+                    - App\Shared\Infrastructure\Messenger\DomainEventTransactionMiddleware
+                    # Wrap every command handler in a single Doctrine transaction so a
+                    # use case touching more than one aggregate (e.g. advancing a
+                    # FlightOccurrence and creating its Announcement) commits atomically.
+                    - doctrine_transaction
             event.bus:
                 default_middleware: allow_no_handlers
 

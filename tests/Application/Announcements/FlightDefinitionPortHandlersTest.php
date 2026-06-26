@@ -57,8 +57,8 @@ final class FlightDefinitionPortHandlersTest extends TestCase
             $this->eventPublisher(),
         )(new CreateAnnouncementCommand(
             'arrival',
-            $flightId->toRfc4122(),
             ['en'],
+            $flightId->toRfc4122(),
         ));
 
         self::assertSame($flightId->toRfc4122(), $result->flightDefinitionId);
@@ -79,8 +79,8 @@ final class FlightDefinitionPortHandlersTest extends TestCase
 
         $handler(new CreateAnnouncementCommand(
             'arrival',
-            Uuid::v7()->toRfc4122(),
             ['en'],
+            Uuid::v7()->toRfc4122(),
         ));
     }
 
@@ -99,8 +99,8 @@ final class FlightDefinitionPortHandlersTest extends TestCase
 
         $handler(new CreateAnnouncementCommand(
             'boarding_invitation',
-            Uuid::v7()->toRfc4122(),
             ['en'],
+            Uuid::v7()->toRfc4122(),
             gateId: Uuid::v7()->toRfc4122(),
         ));
     }

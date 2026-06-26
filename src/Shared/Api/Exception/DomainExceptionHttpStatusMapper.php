@@ -17,8 +17,11 @@ use App\AudioCatalog\Domain\Exception\InvalidAudioAssetUploadException;
 use App\FlightOperations\Domain\Exception\AirportNotFoundException;
 use App\FlightOperations\Domain\Exception\DuplicateAirportException;
 use App\FlightOperations\Domain\Exception\DuplicateFlightDefinitionException;
+use App\FlightOperations\Domain\Exception\DuplicateFlightOccurrenceException;
 use App\FlightOperations\Domain\Exception\DuplicateOperationalResourceException;
 use App\FlightOperations\Domain\Exception\FlightDefinitionNotFoundException as FlightOperationsFlightDefinitionNotFoundException;
+use App\FlightOperations\Domain\Exception\FlightOccurrenceNotFoundException;
+use App\FlightOperations\Domain\Exception\FlightOccurrenceTransitionConflictException;
 use App\FlightOperations\Domain\Exception\OperationalResourceNotFoundException;
 use App\Shared\Domain\DomainException;
 use App\UserAccess\Domain\Exception\InvalidCredentialsException;
@@ -36,7 +39,10 @@ final class DomainExceptionHttpStatusMapper
         InvalidRefreshTokenException::class => Response::HTTP_UNAUTHORIZED,
         UserAlreadyExistsException::class => Response::HTTP_CONFLICT,
         DuplicateFlightDefinitionException::class => Response::HTTP_CONFLICT,
+        DuplicateFlightOccurrenceException::class => Response::HTTP_CONFLICT,
         FlightOperationsFlightDefinitionNotFoundException::class => Response::HTTP_NOT_FOUND,
+        FlightOccurrenceNotFoundException::class => Response::HTTP_NOT_FOUND,
+        FlightOccurrenceTransitionConflictException::class => Response::HTTP_CONFLICT,
         DuplicateAirportException::class => Response::HTTP_CONFLICT,
         AirportNotFoundException::class => Response::HTTP_NOT_FOUND,
         AnnouncementNotFoundException::class => Response::HTTP_NOT_FOUND,

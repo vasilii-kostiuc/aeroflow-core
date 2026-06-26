@@ -4,10 +4,8 @@ declare(strict_types=1);
 
 namespace App\Announcements\Api\Controller;
 
-use App\Announcements\Api\Request\CreateAnnouncementRequest;
 use App\Announcements\Application\AnnouncementResult;
 use App\Announcements\Application\CancelAnnouncement\CancelAnnouncementCommand;
-use App\Announcements\Application\CreateAnnouncement\CreateAnnouncementCommand;
 use App\Announcements\Application\GetAnnouncement\GetAnnouncementQuery;
 use App\Announcements\Application\ListAnnouncements\ListAnnouncementsQuery;
 use App\Shared\Api\Response\ApiResponse;
@@ -15,41 +13,19 @@ use App\Shared\Application\Bus\ApplicationBus;
 use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\JsonResponse;
-use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
 use Symfony\Component\Routing\Attribute\Route;
 
+/**
+ * Flight announcements are created as an action over a FlightOccurrence
+ * (POST /flight-occurrences/{id}/check-in:open|check-in:close|boarding|arrival).
+ * This controller exposes read and cancel operations only.
+ */
 #[Route('/announcements')]
 #[OA\Tag(name: 'Announcements')]
 final class AnnouncementController
 {
     public function __construct(private ApplicationBus $bus)
     {
-    }
-
-    #[Route('', methods: ['POST'])]
-    #[OA\Response(
-        response: 201,
-        description: 'Announcement created',
-        content: new OA\JsonContent(
-            properties: [
-                new OA\Property(property: 'success', type: 'boolean', example: true),
-                new OA\Property(property: 'data', ref: new Model(type: AnnouncementResult::class)),
-            ],
-            type: 'object',
-        ),
-    )]
-    #[OA\Response(response: 404, description: 'Flight definition or configuration not found')]
-    #[OA\Response(response: 422, description: 'Validation, inactive resource, missing prompt, or template resolution error')]
-    public function create(#[MapRequestPayload] CreateAnnouncementRequest $request): JsonResponse
-    {
-        return ApiResponse::created($this->bus->handleAs(new CreateAnnouncementCommand(
-            $request->type,
-            $request->languages,
-            $request->flightDefinitionId,
-            $request->flightOccurrenceId,
-            $request->checkInCounterIds,
-            $request->gateId,
-        ), AnnouncementResult::class));
     }
 
     #[Route('', methods: ['GET'])]

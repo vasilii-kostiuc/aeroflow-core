@@ -52,8 +52,11 @@ final class ApiExceptionListener
 
     private function unwrapException(Throwable $exception): Throwable
     {
-        if ($exception instanceof HandlerFailedException && $exception->getPrevious() !== null) {
-            return $exception->getPrevious();
+        // Unwrap recursively: a use case that dispatches another command on the
+        // bus (e.g. occurrence launch -> create announcement) nests one
+        // HandlerFailedException per bus level around the original exception.
+        while ($exception instanceof HandlerFailedException && $exception->getPrevious() !== null) {
+            $exception = $exception->getPrevious();
         }
 
         return $exception;

@@ -12,7 +12,7 @@ use App\FlightOperations\Domain\Event\BoardingStarted;
 use App\FlightOperations\Domain\Event\CheckInClosed;
 use App\FlightOperations\Domain\Event\CheckInOpened;
 use App\FlightOperations\Domain\Event\FlightOccurrenceCreated;
-use App\FlightOperations\Domain\Exception\InvalidFlightOccurrenceTransitionException;
+use App\FlightOperations\Domain\Exception\FlightOccurrenceTransitionConflictException;
 use App\FlightOperations\Domain\ValueObject\AirportCode;
 use App\FlightOperations\Domain\ValueObject\FlightNumber;
 use DateTimeImmutable;
@@ -60,7 +60,7 @@ final class FlightOccurrenceTest extends TestCase
     {
         $occurrence = FlightOccurrence::createManual($this->departureDefinition(), new DateTimeImmutable('2026-06-25'));
 
-        $this->expectException(InvalidFlightOccurrenceTransitionException::class);
+        $this->expectException(FlightOccurrenceTransitionConflictException::class);
 
         $occurrence->closeCheckIn(Uuid::v7()->toRfc4122());
     }

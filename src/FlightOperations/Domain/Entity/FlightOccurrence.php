@@ -15,6 +15,7 @@ use App\FlightOperations\Domain\Event\CheckInOpened;
 use App\FlightOperations\Domain\Event\FlightOccurrenceCancelled;
 use App\FlightOperations\Domain\Event\FlightOccurrenceCompleted;
 use App\FlightOperations\Domain\Event\FlightOccurrenceCreated;
+use App\FlightOperations\Domain\Exception\FlightOccurrenceTransitionConflictException;
 use App\FlightOperations\Domain\Exception\InvalidFlightOccurrenceTransitionException;
 use App\Shared\Domain\AggregateRoot;
 use DateTimeImmutable;
@@ -187,7 +188,7 @@ final class FlightOccurrence extends AggregateRoot
     public function complete(): void
     {
         if (in_array($this->status, [FlightOccurrenceStatus::Completed, FlightOccurrenceStatus::Cancelled], true)) {
-            throw InvalidFlightOccurrenceTransitionException::forAction('complete', $this->status->value);
+            throw FlightOccurrenceTransitionConflictException::forStatus('complete', $this->status->value);
         }
         $this->status = FlightOccurrenceStatus::Completed;
         $this->completedAt = self::now();
@@ -198,7 +199,7 @@ final class FlightOccurrence extends AggregateRoot
     public function cancel(): void
     {
         if (in_array($this->status, [FlightOccurrenceStatus::Completed, FlightOccurrenceStatus::Cancelled], true)) {
-            throw InvalidFlightOccurrenceTransitionException::forAction('cancel', $this->status->value);
+            throw FlightOccurrenceTransitionConflictException::forStatus('cancel', $this->status->value);
         }
         $this->status = FlightOccurrenceStatus::Cancelled;
         $this->cancelledAt = self::now();
@@ -296,21 +297,21 @@ final class FlightOccurrence extends AggregateRoot
     private function assertDeparture(string $action): void
     {
         if ($this->direction !== FlightDirection::Departure) {
-            throw InvalidFlightOccurrenceTransitionException::incompatibleDirection($action, $this->direction->value);
+            throw FlightOccurrenceTransitionConflictException::incompatibleDirection($action, $this->direction->value);
         }
     }
 
     private function assertArrival(string $action): void
     {
         if ($this->direction !== FlightDirection::Arrival) {
-            throw InvalidFlightOccurrenceTransitionException::incompatibleDirection($action, $this->direction->value);
+            throw FlightOccurrenceTransitionConflictException::incompatibleDirection($action, $this->direction->value);
         }
     }
 
     private function assertStatus(FlightOccurrenceStatus $expected, string $action): void
     {
         if ($this->status !== $expected) {
-            throw InvalidFlightOccurrenceTransitionException::forAction($action, $this->status->value);
+            throw FlightOccurrenceTransitionConflictException::forStatus($action, $this->status->value);
         }
     }
 

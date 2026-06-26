@@ -6,6 +6,7 @@ namespace App\FlightOperations\Infrastructure\Persistence\Doctrine;
 
 use App\FlightOperations\Application\Dispatcher\DispatcherFlightOccurrenceQueryInterface;
 use App\FlightOperations\Application\Dispatcher\DispatcherFlightOccurrenceResult;
+use DateTimeImmutable;
 use Doctrine\DBAL\Connection;
 
 final readonly class DbalDispatcherFlightOccurrenceQuery implements DispatcherFlightOccurrenceQueryInterface
@@ -73,7 +74,7 @@ final readonly class DbalDispatcherFlightOccurrenceQuery implements DispatcherFl
             direction: $row['direction'],
             airportCode: $row['direction'] === 'arrival' ? $row['origin_airport_code_snapshot'] : $row['destination_airport_code_snapshot'],
             airportName: $row['direction'] === 'arrival' ? $row['origin_airport_code_snapshot'] : $row['destination_airport_code_snapshot'],
-            operationalDate: (new \DateTimeImmutable($row['operational_date']))->format('Y-m-d'),
+            operationalDate: new DateTimeImmutable($row['operational_date'])->format('Y-m-d'),
             status: $row['status'],
             eligible: $eligible,
             unavailableReason: $eligible ? null : $this->unavailableReason($announcementType, $row['direction'], $row['status'], filter_var($row['active'], FILTER_VALIDATE_BOOL)),
@@ -86,7 +87,7 @@ final readonly class DbalDispatcherFlightOccurrenceQuery implements DispatcherFl
     {
         return match ($announcementType) {
             'check_in_opening' => ['departure', 'scheduled'],
-            'check_in_continuation', 'check_in_closing' => ['departure', 'check_in_open'],
+            'check_in_closing' => ['departure', 'check_in_open'],
             'boarding_invitation' => ['departure', 'check_in_closed'],
             'arrival' => ['arrival', 'scheduled'],
             default => ['', ''],

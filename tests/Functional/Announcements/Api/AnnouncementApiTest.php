@@ -70,7 +70,6 @@ final class AnnouncementApiTest extends WebTestCase
 
         $this->json($client, 'POST', sprintf('/api/v1/flight-occurrences/%s/check-in:close', $occurrenceId), [
             'languages' => ['en'],
-            'checkInCounterIds' => [$counterId],
         ]);
         self::assertResponseIsSuccessful();
         self::assertSame('check_in_closed', $this->response($client)['data']['occurrence']['status']);

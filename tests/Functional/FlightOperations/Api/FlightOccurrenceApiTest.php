@@ -42,6 +42,31 @@ final class FlightOccurrenceApiTest extends WebTestCase
         self::assertResponseStatusCodeSame(409);
     }
 
+    public function testEnsureManualIsIdempotent(): void
+    {
+        $client = static::createClient();
+        $this->authenticate($client);
+        $flightId = $this->createFlightDefinition($client);
+
+        $this->json($client, 'POST', '/api/v1/flight-occurrences:ensure-manual', [
+            'flightDefinitionId' => $flightId,
+            'operationalDate' => '2026-06-25',
+        ]);
+        self::assertResponseIsSuccessful();
+        $first = $this->response($client)['data'];
+        self::assertSame('scheduled', $first['status']);
+        self::assertSame('manual', $first['source']);
+
+        $this->json($client, 'POST', '/api/v1/flight-occurrences:ensure-manual', [
+            'flightDefinitionId' => $flightId,
+            'operationalDate' => '2026-06-25',
+        ]);
+        self::assertResponseIsSuccessful();
+        $second = $this->response($client)['data'];
+
+        self::assertSame($first['id'], $second['id']);
+    }
+
     private function createFlightDefinition(KernelBrowser $client): string
     {
         $this->json($client, 'POST', '/api/v1/flight-definitions', [

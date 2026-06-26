@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\FlightOperations\Api\Controller;
 
+use App\FlightOperations\Api\Request\EnsureManualFlightOccurrenceRequest;
 use App\FlightOperations\Api\Request\FlightOccurrenceCreateRequest;
 use App\FlightOperations\Api\Request\FlightOccurrenceListRequest;
 use App\FlightOperations\Api\Request\LaunchOccurrenceAnnouncementRequest;
 use App\FlightOperations\Application\CreateFlightOccurrence\CreateFlightOccurrenceCommand;
+use App\FlightOperations\Application\EnsureManualFlightOccurrence\EnsureManualFlightOccurrenceCommand;
 use App\FlightOperations\Application\FlightOccurrenceResult;
 use App\FlightOperations\Application\GetFlightOccurrence\GetFlightOccurrenceQuery;
 use App\FlightOperations\Application\LaunchOccurrenceAnnouncement\LaunchOccurrenceAnnouncementCommand;
@@ -54,6 +56,29 @@ final class FlightOccurrenceController
             operationalDate: $request->operationalDate,
             sequenceNumber: $request->sequenceNumber,
             source: $request->source,
+        ), FlightOccurrenceResult::class));
+    }
+
+    #[Route(':ensure-manual', methods: ['POST'])]
+    #[OA\Response(
+        response: 200,
+        description: 'Existing or newly created manual flight occurrence',
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: 'success', type: 'boolean', example: true),
+                new OA\Property(property: 'data', ref: new Model(type: FlightOccurrenceResult::class)),
+            ],
+            type: 'object',
+        ),
+    )]
+    #[OA\Response(response: 404, description: 'Flight definition not found')]
+    #[OA\Response(response: 422, description: 'Validation or inactive flight definition')]
+    public function ensureManual(#[MapRequestPayload] EnsureManualFlightOccurrenceRequest $request): JsonResponse
+    {
+        return ApiResponse::success($this->bus->handleAs(new EnsureManualFlightOccurrenceCommand(
+            flightDefinitionId: $request->flightDefinitionId,
+            operationalDate: $request->operationalDate,
+            sequenceNumber: $request->sequenceNumber,
         ), FlightOccurrenceResult::class));
     }
 

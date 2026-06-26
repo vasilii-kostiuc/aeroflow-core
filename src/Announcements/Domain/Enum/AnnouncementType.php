@@ -13,7 +13,7 @@ enum AnnouncementType: string
 
     public function requiresCheckInCounters(): bool
     {
-        return in_array($this, [self::CheckInOpening, self::CheckInClosing], true);
+        return self::CheckInOpening === $this;
     }
 
     public function requiresGate(): bool

@@ -48,10 +48,25 @@ final class AnnouncementOperationalResourceResolverTest extends TestCase
         $this->expectException(OperationalResourceUnavailableException::class);
 
         new AnnouncementOperationalResourceResolver($lookup)->resolve(
-            AnnouncementType::CheckInClosing,
+            AnnouncementType::CheckInOpening,
             ['counter-1', 'counter-1'],
             null,
         );
+    }
+
+    public function testCheckInClosingDoesNotRequireCounters(): void
+    {
+        $lookup = $this->createMock(OperationalResourceLookupInterface::class);
+        $lookup->expects(self::never())->method('resolveActiveCheckInCounters');
+
+        $resources = new AnnouncementOperationalResourceResolver($lookup)->resolve(
+            AnnouncementType::CheckInClosing,
+            [],
+            null,
+        );
+
+        self::assertSame([], $resources->checkInCounterSnapshots());
+        self::assertNull($resources->gate);
     }
 
     public function testResolvesBoardingGate(): void

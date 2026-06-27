@@ -9,8 +9,11 @@ services:
     environment:
       APP_ENV: dev
       DATABASE_URL: postgresql://aeroflow:aeroflow@aeroflow_core_postgres:5432/aeroflow?serverVersion=16&charset=utf8
+      MESSENGER_TRANSPORT_DSN: amqp://guest:guest@aeroflow_core_rabbitmq:5672/%2f/announcement_playback
     depends_on:
       aeroflow_core_postgres:
+        condition: service_healthy
+      aeroflow_core_rabbitmq:
         condition: service_healthy
     networks:
       - aeroflow
@@ -42,6 +45,25 @@ services:
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U aeroflow -d aeroflow" ]
       interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - aeroflow
+
+  aeroflow_core_rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: aeroflow_core_rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      # 5672 AMQP, 15672 management UI. Exposed so aeroflow-playback can share
+      # the same broker during local development.
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "-q", "ping" ]
+      interval: 10s
       timeout: 5s
       retries: 5
     networks:

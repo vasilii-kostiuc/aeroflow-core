@@ -18,21 +18,30 @@ framework:
                     - doctrine_transaction
             event.bus:
                 default_middleware: allow_no_handlers
+            # Outbound integration commands to other services. No doctrine_transaction:
+            # they are published after the local transaction has already committed, so
+            # sending must not open a new transaction or depend on the database.
+            integration.bus:
+                default_middleware: allow_no_handlers
 
         transports:
             # https://symfony.com/doc/current/messenger.html#transport-configuration
-            # async: '%env(MESSENGER_TRANSPORT_DSN)%'
+            # Outbound integration commands to aeroflow-playback travel over RabbitMQ.
+            # JSON-serialized so the consuming service is not coupled to Core's classes.
+            async:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                serializer: messenger.transport.symfony_serializer
             # failed: 'doctrine://default?queue_name=failed'
             sync: 'sync://'
 
         routing:
-            # Route your messages to the transports
-            # 'App\Message\YourMessage': async
+            # Core publishes this to aeroflow-playback after the local transaction commits.
+            App\Announcements\Application\Playback\RequestAnnouncementPlayback: async
 
-# when@test:
-#    framework:
-#        messenger:
-#            transports:
-#                # replace with your transport name here (e.g., my_transport: 'in-memory://')
-#                # For more Messenger testing tools, see https://github.com/zenstruck/messenger-test
-#                async: 'in-memory://'
+when@test:
+    framework:
+        messenger:
+            transports:
+                # Keep the outbound transport in-memory in tests so publishing can be
+                # asserted without a running RabbitMQ.
+                async: 'in-memory://'

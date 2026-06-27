@@ -109,6 +109,9 @@ services:
     App\Announcements\Application\Port\FlightOperations\OperationalResourceLookupInterface:
         alias: App\Announcements\Infrastructure\Integration\FlightOperations\FlightOperationsOperationalResourceLookup
 
+    App\Announcements\Application\Playback\PlaybackRequestPublisherInterface:
+        alias: App\Announcements\Infrastructure\Integration\Playback\MessengerPlaybackRequestPublisher
+
     App\AudioCatalog\Domain\Repository\AudioAssetRepositoryInterface:
         alias: App\AudioCatalog\Infrastructure\Persistence\Doctrine\AudioAssetRepository
 

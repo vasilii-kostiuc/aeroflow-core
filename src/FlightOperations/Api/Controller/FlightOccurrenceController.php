@@ -8,6 +8,7 @@ use App\FlightOperations\Api\Request\EnsureManualFlightOccurrenceRequest;
 use App\FlightOperations\Api\Request\FlightOccurrenceCreateRequest;
 use App\FlightOperations\Api\Request\FlightOccurrenceListRequest;
 use App\FlightOperations\Api\Request\LaunchOccurrenceAnnouncementRequest;
+use App\FlightOperations\Api\Request\StartNextManualFlightOccurrenceRequest;
 use App\FlightOperations\Application\CreateFlightOccurrence\CreateFlightOccurrenceCommand;
 use App\FlightOperations\Application\EnsureManualFlightOccurrence\EnsureManualFlightOccurrenceCommand;
 use App\FlightOperations\Application\FlightOccurrenceResult;
@@ -15,6 +16,7 @@ use App\FlightOperations\Application\GetFlightOccurrence\GetFlightOccurrenceQuer
 use App\FlightOperations\Application\LaunchOccurrenceAnnouncement\LaunchOccurrenceAnnouncementCommand;
 use App\FlightOperations\Application\LaunchOccurrenceAnnouncement\LaunchOccurrenceAnnouncementResult;
 use App\FlightOperations\Application\ListFlightOccurrences\ListFlightOccurrencesQuery;
+use App\FlightOperations\Application\StartNextManualFlightOccurrence\StartNextManualFlightOccurrenceCommand;
 use App\Shared\Api\Response\ApiResponse;
 use App\Shared\Application\Bus\ApplicationBus;
 use App\Shared\Application\Pagination\PaginatedResult;
@@ -79,6 +81,29 @@ final class FlightOccurrenceController
             flightDefinitionId: $request->flightDefinitionId,
             operationalDate: $request->operationalDate,
             sequenceNumber: $request->sequenceNumber,
+        ), FlightOccurrenceResult::class));
+    }
+
+    #[Route(':start-next-manual', methods: ['POST'])]
+    #[OA\Response(
+        response: 201,
+        description: 'Next manual flight occurrence created',
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: 'success', type: 'boolean', example: true),
+                new OA\Property(property: 'data', ref: new Model(type: FlightOccurrenceResult::class)),
+            ],
+            type: 'object',
+        ),
+    )]
+    #[OA\Response(response: 404, description: 'Flight definition not found')]
+    #[OA\Response(response: 409, description: 'No previous run, or previous run not yet finished')]
+    #[OA\Response(response: 422, description: 'Validation or inactive flight definition')]
+    public function startNextManual(#[MapRequestPayload] StartNextManualFlightOccurrenceRequest $request): JsonResponse
+    {
+        return ApiResponse::created($this->bus->handleAs(new StartNextManualFlightOccurrenceCommand(
+            flightDefinitionId: $request->flightDefinitionId,
+            operationalDate: $request->operationalDate,
         ), FlightOccurrenceResult::class));
     }
 

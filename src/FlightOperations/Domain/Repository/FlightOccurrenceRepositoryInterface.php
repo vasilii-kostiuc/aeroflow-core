@@ -21,4 +21,14 @@ interface FlightOccurrenceRepositoryInterface
         FlightOccurrenceSource $source,
         int $sequenceNumber,
     ): ?FlightOccurrence;
+
+    /**
+     * Latest manual occurrence (highest sequence number) for the card and date,
+     * locked for write so concurrent next-run commands cannot allocate the same
+     * sequence number. Returns null when no manual run exists yet.
+     */
+    public function findLatestManualForUpdate(
+        Uuid $flightDefinitionId,
+        DateTimeImmutable $operationalDate,
+    ): ?FlightOccurrence;
 }

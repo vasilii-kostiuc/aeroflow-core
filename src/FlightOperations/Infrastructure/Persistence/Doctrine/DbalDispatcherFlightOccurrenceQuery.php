@@ -35,7 +35,17 @@ final readonly class DbalDispatcherFlightOccurrenceQuery implements DispatcherFl
             )
             ->from('flight_occurrence', 'o')
             ->innerJoin('o', 'flight_definition', 'f', 'f.id = o.flight_definition_id')
-            ->andWhere("o.status NOT IN ('completed', 'cancelled')");
+            ->andWhere("o.status NOT IN ('completed', 'cancelled')")
+            // A card may have several manual runs on one day; the board shows the
+            // latest one, so keep only the highest sequence number per definition
+            // and date (among non-terminal runs).
+            ->andWhere(
+                'NOT EXISTS (SELECT 1 FROM flight_occurrence o2'
+                .' WHERE o2.flight_definition_id = o.flight_definition_id'
+                .' AND o2.operational_date = o.operational_date'
+                ." AND o2.status NOT IN ('completed', 'cancelled')"
+                .' AND o2.sequence_number > o.sequence_number)',
+            );
 
         if ($operationalDate !== null) {
             $query->andWhere('o.operational_date = :operationalDate')

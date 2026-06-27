@@ -48,6 +48,25 @@ final class InMemoryFlightOccurrenceRepository implements FlightOccurrenceReposi
         return null;
     }
 
+    public function findLatestManualForUpdate(
+        Uuid $flightDefinitionId,
+        DateTimeImmutable $operationalDate,
+    ): ?FlightOccurrence {
+        $latest = null;
+        foreach ($this->items as $item) {
+            if (
+                $item->getFlightDefinitionId()->equals($flightDefinitionId)
+                && $item->getOperationalDate()->format('Y-m-d') === $operationalDate->format('Y-m-d')
+                && $item->getSource() === FlightOccurrenceSource::Manual
+                && ($latest === null || $item->getSequenceNumber() > $latest->getSequenceNumber())
+            ) {
+                $latest = $item;
+            }
+        }
+
+        return $latest;
+    }
+
     public function add(FlightOccurrence $occurrence): void
     {
         $this->items[$occurrence->getId()->toRfc4122()] = $occurrence;

@@ -207,6 +207,25 @@ final class FlightOccurrence extends AggregateRoot
         $this->recordEvent(new FlightOccurrenceCancelled($this->id->toRfc4122(), $this->updatedAt));
     }
 
+    /**
+     * Whether this run has reached the final status of its lifecycle, after which
+     * a successor manual run for the same card and date may be started.
+     *
+     * For a departure the final dispatcher action is boarding; for an arrival it is
+     * arrival_announced. Terminal completed/cancelled are included for forward
+     * compatibility — they are not yet reachable in the manual flow (no explicit
+     * completion/cancellation action exists).
+     */
+    public function hasReachedFinalStatus(): bool
+    {
+        return in_array($this->status, [
+            FlightOccurrenceStatus::Boarding,
+            FlightOccurrenceStatus::ArrivalAnnounced,
+            FlightOccurrenceStatus::Completed,
+            FlightOccurrenceStatus::Cancelled,
+        ], true);
+    }
+
     public function getId(): Uuid
     {
         return $this->id;

@@ -24,4 +24,14 @@ final class FlightOccurrenceTransitionConflictException extends DomainException
     {
         return new self(sprintf('Cannot apply "%s" to "%s" flight occurrence.', $action, $direction));
     }
+
+    public static function noPreviousManualRun(): self
+    {
+        return new self('Cannot start the next run: no previous manual run exists for this card and date.');
+    }
+
+    public static function previousManualRunNotFinished(string $status): self
+    {
+        return new self(sprintf('Cannot start the next run while the previous run is "%s".', $status));
+    }
 }

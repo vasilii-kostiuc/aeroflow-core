@@ -10,7 +10,9 @@ use App\FlightOperations\Domain\Exception\DuplicateFlightOccurrenceException;
 use App\FlightOperations\Domain\Repository\FlightOccurrenceRepositoryInterface;
 use DateTimeImmutable;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
+use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
 
 final readonly class FlightOccurrenceRepository implements FlightOccurrenceRepositoryInterface
@@ -46,5 +48,25 @@ final readonly class FlightOccurrenceRepository implements FlightOccurrenceRepos
             'source' => $source,
             'sequenceNumber' => $sequenceNumber,
         ]);
+    }
+
+    public function findLatestManualForUpdate(
+        Uuid $flightDefinitionId,
+        DateTimeImmutable $operationalDate,
+    ): ?FlightOccurrence {
+        return $this->entityManager->createQueryBuilder()
+            ->select('o')
+            ->from(FlightOccurrence::class, 'o')
+            ->where('o.flightDefinitionId = :flightDefinitionId')
+            ->andWhere('o.operationalDate = :operationalDate')
+            ->andWhere('o.source = :source')
+            ->setParameter('flightDefinitionId', $flightDefinitionId, UuidType::NAME)
+            ->setParameter('operationalDate', new DateTimeImmutable($operationalDate->format('Y-m-d')))
+            ->setParameter('source', FlightOccurrenceSource::Manual->value)
+            ->orderBy('o.sequenceNumber', 'DESC')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->setLockMode(LockMode::PESSIMISTIC_WRITE)
+            ->getOneOrNullResult();
     }
 }

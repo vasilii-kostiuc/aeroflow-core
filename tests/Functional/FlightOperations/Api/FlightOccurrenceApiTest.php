@@ -67,6 +67,41 @@ final class FlightOccurrenceApiTest extends WebTestCase
         self::assertSame($first['id'], $second['id']);
     }
 
+    public function testStartNextManualRejectsWhenNoPreviousRun(): void
+    {
+        $client = static::createClient();
+        $this->authenticate($client);
+        $flightId = $this->createFlightDefinition($client);
+
+        $this->json($client, 'POST', '/api/v1/flight-occurrences:start-next-manual', [
+            'flightDefinitionId' => $flightId,
+            'operationalDate' => '2026-06-25',
+        ]);
+
+        self::assertResponseStatusCodeSame(409);
+    }
+
+    public function testStartNextManualRejectsWhenPreviousRunNotFinished(): void
+    {
+        $client = static::createClient();
+        $this->authenticate($client);
+        $flightId = $this->createFlightDefinition($client);
+
+        // First run exists but is only "scheduled" (its lifecycle is not finished).
+        $this->json($client, 'POST', '/api/v1/flight-occurrences:ensure-manual', [
+            'flightDefinitionId' => $flightId,
+            'operationalDate' => '2026-06-25',
+        ]);
+        self::assertResponseIsSuccessful();
+
+        $this->json($client, 'POST', '/api/v1/flight-occurrences:start-next-manual', [
+            'flightDefinitionId' => $flightId,
+            'operationalDate' => '2026-06-25',
+        ]);
+
+        self::assertResponseStatusCodeSame(409);
+    }
+
     private function createFlightDefinition(KernelBrowser $client): string
     {
         $this->json($client, 'POST', '/api/v1/flight-definitions', [

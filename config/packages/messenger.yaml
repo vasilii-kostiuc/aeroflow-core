@@ -31,6 +31,16 @@ framework:
             async:
                 dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
                 serializer: messenger.transport.symfony_serializer
+            # Inbound integration events from aeroflow-playback (queued / started /
+            # completed). The custom serializer rebuilds the message from the JSON
+            # body discriminated by the `event` field, so core is not coupled to
+            # playback's PHP classes.
+            playback_events:
+                dsn: '%env(MESSENGER_PLAYBACK_EVENTS_DSN)%'
+                serializer: App\Announcements\Infrastructure\Integration\Playback\PlaybackEventSerializer
+                retry_strategy:
+                    max_retries: 3
+                    delay: 1000
             # failed: 'doctrine://default?queue_name=failed'
             sync: 'sync://'
 
@@ -45,3 +55,4 @@ when@test:
                 # Keep the outbound transport in-memory in tests so publishing can be
                 # asserted without a running RabbitMQ.
                 async: 'in-memory://'
+                playback_events: 'in-memory://'

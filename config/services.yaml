@@ -112,6 +112,9 @@ services:
     App\Announcements\Application\Playback\PlaybackRequestPublisherInterface:
         alias: App\Announcements\Infrastructure\Integration\Playback\MessengerPlaybackRequestPublisher
 
+    App\Announcements\Application\Playback\PlaybackEventReceiptRecorderInterface:
+        alias: App\Announcements\Infrastructure\Integration\Playback\DoctrinePlaybackEventReceiptRecorder
+
     App\AudioCatalog\Domain\Repository\AudioAssetRepositoryInterface:
         alias: App\AudioCatalog\Infrastructure\Persistence\Doctrine\AudioAssetRepository
 

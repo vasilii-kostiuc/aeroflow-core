@@ -10,6 +10,32 @@ services:
       APP_ENV: dev
       DATABASE_URL: postgresql://aeroflow:aeroflow@aeroflow_core_postgres:5432/aeroflow?serverVersion=16&charset=utf8
       MESSENGER_TRANSPORT_DSN: amqp://guest:guest@aeroflow_core_rabbitmq:5672/%2f/announcement_playback
+      MESSENGER_PLAYBACK_EVENTS_DSN: amqp://guest:guest@aeroflow_core_rabbitmq:5672/%2f/playback_events
+    depends_on:
+      aeroflow_core_postgres:
+        condition: service_healthy
+      aeroflow_core_rabbitmq:
+        condition: service_healthy
+    networks:
+      - aeroflow
+
+  # Consumes the integration events published back by aeroflow-playback
+  # (queued/started/completed) and records their receipts. Long-running
+  # messenger worker: a separate process from PHP-FPM by design.
+  aeroflow_core_worker:
+    build:
+      context: .
+      dockerfile: _docker/Dockerfile
+    container_name: aeroflow_core_worker
+    command: php bin/console messenger:consume playback_events -vv
+    restart: unless-stopped
+    volumes:
+      - .:/var/www
+    environment:
+      APP_ENV: dev
+      DATABASE_URL: postgresql://aeroflow:aeroflow@aeroflow_core_postgres:5432/aeroflow?serverVersion=16&charset=utf8
+      MESSENGER_TRANSPORT_DSN: amqp://guest:guest@aeroflow_core_rabbitmq:5672/%2f/announcement_playback
+      MESSENGER_PLAYBACK_EVENTS_DSN: amqp://guest:guest@aeroflow_core_rabbitmq:5672/%2f/playback_events
     depends_on:
       aeroflow_core_postgres:
         condition: service_healthy

@@ -34,4 +34,16 @@ final readonly class LocalAudioAssetStorage implements AudioAssetStorageInterfac
     {
         $this->filesystem->remove($this->storageDirectory.DIRECTORY_SEPARATOR.basename($storageKey));
     }
+
+    public function readStream(string $storageKey)
+    {
+        $path = $this->storageDirectory.DIRECTORY_SEPARATOR.basename($storageKey);
+        if (!is_file($path)) {
+            return null;
+        }
+
+        $stream = fopen($path, 'rb');
+
+        return $stream === false ? null : $stream;
+    }
 }

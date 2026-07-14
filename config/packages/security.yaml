@@ -26,6 +26,10 @@ security:
         - { path: ^/api/v1/logout$, roles: PUBLIC_ACCESS }
         - { path: ^/api/v1/languages$, roles: PUBLIC_ACCESS }
         - { path: ^/api/v1, roles: IS_AUTHENTICATED_FULLY }
+        # Service-to-service download for the audio agent (task 016). No
+        # inter-service auth yet — network-level trust of the local installation,
+        # a documented deliberate compromise.
+        - { path: ^/internal/v1, roles: PUBLIC_ACCESS }
 
 when@test:
     security:

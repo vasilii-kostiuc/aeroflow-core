@@ -13,3 +13,9 @@ api_v1:
     resource: ../src/
     type: attribute
     prefix: /api/v1
+    exclude: ../src/AudioCatalog/Api/Controller/InternalAudioAssetFileController.php
+# Service-to-service endpoints live outside /api/v1 (no user JWT): the audio agent
+# downloads asset files here (task 016).
+internal:
+    resource: ../src/AudioCatalog/Api/Controller/InternalAudioAssetFileController.php
+    type: attribute

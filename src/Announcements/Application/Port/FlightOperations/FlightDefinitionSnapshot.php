@@ -11,6 +11,7 @@ final readonly class FlightDefinitionSnapshot
     public function __construct(
         public bool $active,
         public FlightDirection $direction,
+        public string $flightNumber = '',
     ) {
     }
 }

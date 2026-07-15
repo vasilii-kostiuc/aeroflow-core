@@ -26,6 +26,7 @@ final readonly class FlightOperationsFlightDefinitionLookup implements FlightDef
         return new FlightDefinitionSnapshot(
             active: $flightDefinition->isActive(),
             direction: FlightDirection::from($flightDefinition->getDirection()->value),
+            flightNumber: $flightDefinition->getFlightNumber()->toString(),
         );
     }
 }

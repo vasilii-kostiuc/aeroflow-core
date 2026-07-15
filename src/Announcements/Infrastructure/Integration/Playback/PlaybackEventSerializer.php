@@ -57,6 +57,7 @@ final class PlaybackEventSerializer implements SerializerInterface
             jobId: (string) $data['jobId'],
             occurredAt: (string) ($data['occurredAt'] ?? ''),
             schemaVersion: (int) ($data['schemaVersion'] ?? 1),
+            reason: isset($data['reason']) ? (string) $data['reason'] : null,
         ));
     }
 

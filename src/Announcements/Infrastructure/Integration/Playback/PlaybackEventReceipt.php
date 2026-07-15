@@ -43,6 +43,10 @@ class PlaybackEventReceipt
     #[ORM\Column(length: 64)]
     private string $occurredAt;
 
+    /** Failure reason as reported by playback; only failed events carry one. */
+    #[ORM\Column(nullable: true)]
+    private ?string $reason;
+
     #[ORM\Column]
     private DateTimeImmutable $receivedAt;
 
@@ -56,6 +60,7 @@ class PlaybackEventReceipt
         string $announcementId,
         string $jobId,
         string $occurredAt,
+        ?string $reason = null,
     ): self {
         $receipt = new self();
         $receipt->id = Uuid::v7();
@@ -64,6 +69,7 @@ class PlaybackEventReceipt
         $receipt->announcementId = Uuid::fromString($announcementId);
         $receipt->jobId = Uuid::fromString($jobId);
         $receipt->occurredAt = $occurredAt;
+        $receipt->reason = $reason;
         $receipt->receivedAt = new DateTimeImmutable();
 
         return $receipt;
@@ -97,6 +103,11 @@ class PlaybackEventReceipt
     public function getOccurredAt(): string
     {
         return $this->occurredAt;
+    }
+
+    public function getReason(): ?string
+    {
+        return $this->reason;
     }
 
     public function getReceivedAt(): DateTimeImmutable

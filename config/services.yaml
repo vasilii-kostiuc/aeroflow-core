@@ -115,6 +115,9 @@ services:
     App\Announcements\Application\Playback\PlaybackEventReceiptRecorderInterface:
         alias: App\Announcements\Infrastructure\Integration\Playback\DoctrinePlaybackEventReceiptRecorder
 
+    App\Announcements\Application\Playback\PlaybackEventReceiptReaderInterface:
+        alias: App\Announcements\Infrastructure\Integration\Playback\DoctrinePlaybackEventReceiptReader
+
     App\AudioCatalog\Domain\Repository\AudioAssetRepositoryInterface:
         alias: App\AudioCatalog\Infrastructure\Persistence\Doctrine\AudioAssetRepository
 

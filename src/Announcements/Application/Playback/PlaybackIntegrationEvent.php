@@ -23,6 +23,7 @@ final readonly class PlaybackIntegrationEvent
         public string $jobId,
         public string $occurredAt,
         public int $schemaVersion,
+        public ?string $reason = null,
     ) {
     }
 }

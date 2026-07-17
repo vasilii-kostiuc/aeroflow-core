@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Application\Announcements;
 
 use App\Announcements\Application\EventHandler\PublishAnnouncementPlaybackRequest;
+use App\Announcements\Application\Playback\CancelAnnouncementPlayback;
 use App\Announcements\Application\Playback\PlaybackRequestPublisherInterface;
 use App\Announcements\Application\Playback\RequestAnnouncementPlayback;
 use App\Announcements\Domain\Entity\Announcement;
@@ -50,7 +51,8 @@ final class PublishAnnouncementPlaybackRequestTest extends TestCase
         self::assertSame($announcement->getAudioSequence(), $message->audioSequence);
         self::assertNull($message->repeatRule);
         self::assertSame('2026-06-26T10:00:00+00:00', $message->occurredAt);
-        self::assertSame(1, $message->schemaVersion);
+        self::assertSame(2, $message->schemaVersion);
+        self::assertSame('announcement_playback.request', $message->command);
     }
 
     public function testDoesNothingWhenAnnouncementIsMissing(): void
@@ -100,8 +102,16 @@ final class RecordingPlaybackRequestPublisher implements PlaybackRequestPublishe
     /** @var list<RequestAnnouncementPlayback> */
     public array $messages = [];
 
+    /** @var list<CancelAnnouncementPlayback> */
+    public array $cancels = [];
+
     public function publish(RequestAnnouncementPlayback $message): void
     {
         $this->messages[] = $message;
+    }
+
+    public function publishCancel(CancelAnnouncementPlayback $message): void
+    {
+        $this->cancels[] = $message;
     }
 }

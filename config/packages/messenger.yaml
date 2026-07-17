@@ -45,8 +45,9 @@ framework:
             sync: 'sync://'
 
         routing:
-            # Core publishes this to aeroflow-playback after the local transaction commits.
+            # Core publishes these to aeroflow-playback after the local transaction commits.
             App\Announcements\Application\Playback\RequestAnnouncementPlayback: async
+            App\Announcements\Application\Playback\CancelAnnouncementPlayback: async
 
 when@test:
     framework:

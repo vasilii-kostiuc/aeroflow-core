@@ -14,7 +14,13 @@ namespace App\Announcements\Application\Playback;
  */
 final readonly class RequestAnnouncementPlayback
 {
-    public const int SCHEMA_VERSION = 1;
+    /**
+     * Body-level discriminator (ADR 002): the announcement_playback queue now
+     * carries more than one command type, so every body names its own type.
+     */
+    public const string COMMAND = 'announcement_playback.request';
+
+    public const int SCHEMA_VERSION = 2;
 
     /**
      * @param list<array{languageCode:string,sortOrder:int,items:list<array<string,mixed>>}> $audioSequence
@@ -30,6 +36,7 @@ final readonly class RequestAnnouncementPlayback
         public ?array $repeatRule,
         public string $occurredAt,
         public int $schemaVersion = self::SCHEMA_VERSION,
+        public string $command = self::COMMAND,
     ) {
     }
 }

@@ -79,6 +79,26 @@ final class ListPlaybackQueueHandlerTest extends TestCase
         self::assertSame('completed', $result->recent[1]->state);
     }
 
+    public function testCancelledJobMovesToRecent(): void
+    {
+        $cancelledAnnouncement = $this->announcement();
+        $cancelledJob = Uuid::v7()->toRfc4122();
+
+        $receipts = [
+            $this->receipt('queued', $cancelledAnnouncement, $cancelledJob, '09:00:00'),
+            $this->receipt('cancelled', $cancelledAnnouncement, $cancelledJob, '09:00:10'),
+        ];
+
+        $result = $this->handler($receipts, [$cancelledAnnouncement])(new ListPlaybackQueueQuery());
+
+        self::assertNull($result->playing);
+        self::assertSame([], $result->waiting);
+        self::assertCount(1, $result->recent);
+        self::assertSame($cancelledJob, $result->recent[0]->jobId);
+        self::assertSame('cancelled', $result->recent[0]->state);
+        self::assertNull($result->recent[0]->failureReason);
+    }
+
     public function testRecentIsLimited(): void
     {
         $receipts = [];

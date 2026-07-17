@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Announcements\Infrastructure\Integration\Playback;
 
+use App\Announcements\Application\Playback\CancelAnnouncementPlayback;
 use App\Announcements\Application\Playback\PlaybackRequestPublisherInterface;
 use App\Announcements\Application\Playback\RequestAnnouncementPlayback;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -48,6 +49,33 @@ final class PlaybackRequestRoutingTest extends KernelTestCase
         self::assertInstanceOf(RequestAnnouncementPlayback::class, $message);
         self::assertSame($announcementId, $message->announcementId);
         self::assertSame(100, $message->priority);
+        self::assertSame(2, $message->schemaVersion);
+        self::assertSame('announcement_playback.request', $message->command);
+    }
+
+    public function testPublisherRoutesCancelToAsyncTransport(): void
+    {
+        self::bootKernel();
+        $publisher = self::getContainer()->get(PlaybackRequestPublisherInterface::class);
+        $transport = self::getContainer()->get('messenger.transport.async');
+        self::assertInstanceOf(PlaybackRequestPublisherInterface::class, $publisher);
+        self::assertInstanceOf(InMemoryTransport::class, $transport);
+
+        $announcementId = Uuid::v7()->toRfc4122();
+        $publisher->publishCancel(new CancelAnnouncementPlayback(
+            messageId: Uuid::v7()->toRfc4122(),
+            correlationId: $announcementId,
+            announcementId: $announcementId,
+            occurredAt: '2026-07-17T10:00:00+00:00',
+        ));
+
+        $sent = $transport->getSent();
+        self::assertCount(1, $sent);
+
+        $message = $sent[0]->getMessage();
+        self::assertInstanceOf(CancelAnnouncementPlayback::class, $message);
+        self::assertSame($announcementId, $message->announcementId);
+        self::assertSame('announcement_playback.cancel', $message->command);
         self::assertSame(1, $message->schemaVersion);
     }
 }

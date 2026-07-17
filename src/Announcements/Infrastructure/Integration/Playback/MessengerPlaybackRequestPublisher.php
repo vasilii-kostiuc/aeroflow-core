@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Announcements\Infrastructure\Integration\Playback;
 
+use App\Announcements\Application\Playback\CancelAnnouncementPlayback;
 use App\Announcements\Application\Playback\PlaybackRequestPublisherInterface;
 use App\Announcements\Application\Playback\RequestAnnouncementPlayback;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -24,6 +25,11 @@ final readonly class MessengerPlaybackRequestPublisher implements PlaybackReques
     }
 
     public function publish(RequestAnnouncementPlayback $message): void
+    {
+        $this->bus->dispatch($message);
+    }
+
+    public function publishCancel(CancelAnnouncementPlayback $message): void
     {
         $this->bus->dispatch($message);
     }

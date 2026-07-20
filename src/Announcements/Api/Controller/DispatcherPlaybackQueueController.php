@@ -6,6 +6,7 @@ namespace App\Announcements\Api\Controller;
 
 use App\Announcements\Application\ListPlaybackQueue\ListPlaybackQueueQuery;
 use App\Announcements\Application\ListPlaybackQueue\PlaybackQueueResult;
+use App\Announcements\Application\StopPlayback\StopPlaybackCommand;
 use App\Shared\Api\Response\ApiResponse;
 use App\Shared\Application\Bus\ApplicationBus;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -27,5 +28,13 @@ final readonly class DispatcherPlaybackQueueController
     public function list(): JsonResponse
     {
         return ApiResponse::success($this->bus->handleAs(new ListPlaybackQueueQuery(), PlaybackQueueResult::class));
+    }
+
+    #[Route('/{announcementId}/stop', methods: ['POST'])]
+    public function stop(string $announcementId): JsonResponse
+    {
+        $this->bus->dispatch(new StopPlaybackCommand($announcementId));
+
+        return ApiResponse::success(['announcementId' => $announcementId]);
     }
 }

@@ -8,6 +8,7 @@ use App\Announcements\Application\EventHandler\PublishAnnouncementPlaybackReques
 use App\Announcements\Application\Playback\CancelAnnouncementPlayback;
 use App\Announcements\Application\Playback\PlaybackRequestPublisherInterface;
 use App\Announcements\Application\Playback\RequestAnnouncementPlayback;
+use App\Announcements\Application\Playback\StopAnnouncementPlayback;
 use App\Announcements\Domain\Entity\Announcement;
 use App\Announcements\Domain\Enum\AnnouncementType;
 use App\Announcements\Domain\Event\AnnouncementCreated;
@@ -113,5 +114,9 @@ final class RecordingPlaybackRequestPublisher implements PlaybackRequestPublishe
     public function publishCancel(CancelAnnouncementPlayback $message): void
     {
         $this->cancels[] = $message;
+    }
+
+    public function publishStop(StopAnnouncementPlayback $message): void
+    {
     }
 }

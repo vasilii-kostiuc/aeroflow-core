@@ -35,7 +35,7 @@ final readonly class ListPlaybackQueueHandler
     {
         $receipts = $this->receipts->listReceivedSince(new DateTimeImmutable('today'));
 
-        /** @var array<string,array{announcementId:string,queuedAt:?DateTimeImmutable,startedAt:?DateTimeImmutable,finishedAt:?DateTimeImmutable,failed:bool,cancelled:bool,reason:?string}> $jobs */
+        /** @var array<string,array{announcementId:string,queuedAt:?DateTimeImmutable,startedAt:?DateTimeImmutable,finishedAt:?DateTimeImmutable,failed:bool,cancelled:bool,interrupted:bool,reason:?string}> $jobs */
         $jobs = [];
         foreach ($receipts as $receipt) {
             $job = $jobs[$receipt->jobId] ?? [
@@ -45,6 +45,7 @@ final readonly class ListPlaybackQueueHandler
                 'finishedAt' => null,
                 'failed' => false,
                 'cancelled' => false,
+                'interrupted' => false,
                 'reason' => null,
             ];
 
@@ -60,6 +61,10 @@ final readonly class ListPlaybackQueueHandler
                 'announcement_playback.cancelled' => [
                     $job['finishedAt'] = $receipt->receivedAt,
                     $job['cancelled'] = true,
+                ],
+                'announcement_playback.interrupted' => [
+                    $job['finishedAt'] = $receipt->receivedAt,
+                    $job['interrupted'] = true,
                 ],
                 default => null,
             };
@@ -102,7 +107,7 @@ final readonly class ListPlaybackQueueHandler
     }
 
     /**
-     * @param array{announcementId:string,queuedAt:?DateTimeImmutable,startedAt:?DateTimeImmutable,finishedAt:?DateTimeImmutable,failed:bool,cancelled:bool,reason:?string} $job
+     * @param array{announcementId:string,queuedAt:?DateTimeImmutable,startedAt:?DateTimeImmutable,finishedAt:?DateTimeImmutable,failed:bool,cancelled:bool,interrupted:bool,reason:?string} $job
      */
     private function row(string $jobId, array $job): ?PlaybackQueueRowResult
     {
@@ -116,6 +121,7 @@ final readonly class ListPlaybackQueueHandler
         $state = match (true) {
             $job['failed'] => 'failed',
             $job['cancelled'] => 'cancelled',
+            $job['interrupted'] => 'interrupted',
             $job['finishedAt'] !== null => 'completed',
             $job['startedAt'] !== null => 'playing',
             default => 'waiting',

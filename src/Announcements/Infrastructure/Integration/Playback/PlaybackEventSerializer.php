@@ -49,7 +49,7 @@ final class PlaybackEventSerializer implements SerializerInterface
             }
         }
 
-        return new Envelope(new PlaybackIntegrationEvent(
+        return RetryCountHeader::restore(new Envelope(new PlaybackIntegrationEvent(
             event: (string) $data['event'],
             messageId: (string) $data['messageId'],
             correlationId: (string) $data['correlationId'],
@@ -58,11 +58,44 @@ final class PlaybackEventSerializer implements SerializerInterface
             occurredAt: (string) ($data['occurredAt'] ?? ''),
             schemaVersion: (int) ($data['schemaVersion'] ?? 1),
             reason: isset($data['reason']) ? (string) $data['reason'] : null,
-        ));
+        )), $encodedEnvelope);
     }
 
+    /**
+     * Encoding happens when the retry listener re-sends a failed event to this
+     * same transport; the body must round-trip through decode(). A throwing
+     * encode() would kill the whole worker on the first handler failure.
+     */
     public function encode(Envelope $envelope): array
     {
-        throw new LogicException(self::class.' only decodes inbound playback events.');
+        $message = $envelope->getMessage();
+        if (!$message instanceof PlaybackIntegrationEvent) {
+            throw new LogicException(sprintf(
+                '%s only encodes playback events, got "%s".',
+                self::class,
+                get_debug_type($message),
+            ));
+        }
+
+        $body = [
+            'event' => $message->event,
+            'messageId' => $message->messageId,
+            'correlationId' => $message->correlationId,
+            'announcementId' => $message->announcementId,
+            'jobId' => $message->jobId,
+        ];
+        if ($message->reason !== null) {
+            $body['reason'] = $message->reason;
+        }
+        $body['occurredAt'] = $message->occurredAt;
+        $body['schemaVersion'] = $message->schemaVersion;
+
+        return [
+            'body' => json_encode($body, JSON_THROW_ON_ERROR),
+            'headers' => RetryCountHeader::add($envelope, [
+                'type' => $message->event,
+                'Content-Type' => 'application/json',
+            ]),
+        ];
     }
 }

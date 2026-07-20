@@ -48,6 +48,7 @@ framework:
             # Core publishes these to aeroflow-playback after the local transaction commits.
             App\Announcements\Application\Playback\RequestAnnouncementPlayback: async
             App\Announcements\Application\Playback\CancelAnnouncementPlayback: async
+            App\Announcements\Application\Playback\StopAnnouncementPlayback: async
 
 when@test:
     framework:

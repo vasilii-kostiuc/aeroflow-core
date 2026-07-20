@@ -7,6 +7,7 @@ namespace App\Tests\Application\Announcements;
 use App\Announcements\Application\EventHandler\PublishAnnouncementPlaybackCancel;
 use App\Announcements\Application\Playback\CancelAnnouncementPlayback;
 use App\Announcements\Application\Playback\PlaybackRequestPublisherInterface;
+use App\Announcements\Application\Playback\StopAnnouncementPlayback;
 use App\Announcements\Application\Playback\RequestAnnouncementPlayback;
 use App\Announcements\Domain\Event\AnnouncementCancelled;
 use DateTimeImmutable;
@@ -51,5 +52,9 @@ final class RecordingCancelPublisher implements PlaybackRequestPublisherInterfac
     public function publishCancel(CancelAnnouncementPlayback $message): void
     {
         $this->cancels[] = $message;
+    }
+
+    public function publishStop(StopAnnouncementPlayback $message): void
+    {
     }
 }

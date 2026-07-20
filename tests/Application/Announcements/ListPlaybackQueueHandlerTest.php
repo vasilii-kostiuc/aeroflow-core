@@ -99,6 +99,27 @@ final class ListPlaybackQueueHandlerTest extends TestCase
         self::assertNull($result->recent[0]->failureReason);
     }
 
+    public function testInterruptedJobMovesToRecent(): void
+    {
+        $interruptedAnnouncement = $this->announcement();
+        $interruptedJob = Uuid::v7()->toRfc4122();
+
+        $receipts = [
+            $this->receipt('queued', $interruptedAnnouncement, $interruptedJob, '09:00:00'),
+            $this->receipt('started', $interruptedAnnouncement, $interruptedJob, '09:00:01'),
+            $this->receipt('interrupted', $interruptedAnnouncement, $interruptedJob, '09:00:10'),
+        ];
+
+        $result = $this->handler($receipts, [$interruptedAnnouncement])(new ListPlaybackQueueQuery());
+
+        self::assertNull($result->playing);
+        self::assertSame([], $result->waiting);
+        self::assertCount(1, $result->recent);
+        self::assertSame($interruptedJob, $result->recent[0]->jobId);
+        self::assertSame('interrupted', $result->recent[0]->state);
+        self::assertNull($result->recent[0]->failureReason);
+    }
+
     public function testRecentIsLimited(): void
     {
         $receipts = [];

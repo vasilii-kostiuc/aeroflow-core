@@ -17,4 +17,6 @@ interface PlaybackRequestPublisherInterface
     public function publishCancel(CancelAnnouncementPlayback $message): void;
 
     public function publishStop(StopAnnouncementPlayback $message): void;
+
+    public function publishStopRepeat(StopAnnouncementRepeat $message): void;
 }

@@ -100,8 +100,8 @@ services:
     App\Announcements\Application\Port\FlightOperations\FlightDefinitionLookupInterface:
         alias: App\Announcements\Infrastructure\Integration\FlightOperations\FlightOperationsFlightDefinitionLookup
 
-    App\FlightOperations\Application\Port\Announcements\AnnouncementLauncherInterface:
-        alias: App\FlightOperations\Infrastructure\Integration\Announcements\BusAnnouncementLauncher
+    App\FlightOperations\Application\Port\Announcements\OccurrenceAnnouncementPort:
+        alias: App\FlightOperations\Infrastructure\Integration\Announcements\BusOccurrenceAnnouncements
 
     App\Announcements\Application\Port\AudioCatalog\AudioPromptLookupInterface:
         alias: App\Announcements\Infrastructure\Integration\AudioCatalog\AudioCatalogAudioPromptLookup

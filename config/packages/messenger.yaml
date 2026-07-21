@@ -49,6 +49,7 @@ framework:
             App\Announcements\Application\Playback\RequestAnnouncementPlayback: async
             App\Announcements\Application\Playback\CancelAnnouncementPlayback: async
             App\Announcements\Application\Playback\StopAnnouncementPlayback: async
+            App\Announcements\Application\Playback\StopAnnouncementRepeat: async
 
 when@test:
     framework:

@@ -50,7 +50,7 @@ final readonly class PublishAnnouncementPlaybackRequest
             type: $announcement->getType()->value,
             priority: self::FLIGHT_ANNOUNCEMENT_PRIORITY,
             audioSequence: $announcement->getAudioSequence(),
-            repeatRule: null,
+            repeatRule: $announcement->repeatRule(),
             occurredAt: $event->occurredAt->format(DateTimeInterface::ATOM),
         ));
     }

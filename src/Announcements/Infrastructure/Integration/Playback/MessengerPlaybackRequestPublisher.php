@@ -8,6 +8,7 @@ use App\Announcements\Application\Playback\CancelAnnouncementPlayback;
 use App\Announcements\Application\Playback\PlaybackRequestPublisherInterface;
 use App\Announcements\Application\Playback\RequestAnnouncementPlayback;
 use App\Announcements\Application\Playback\StopAnnouncementPlayback;
+use App\Announcements\Application\Playback\StopAnnouncementRepeat;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Messenger\MessageBusInterface;
 
@@ -36,6 +37,11 @@ final readonly class MessengerPlaybackRequestPublisher implements PlaybackReques
     }
 
     public function publishStop(StopAnnouncementPlayback $message): void
+    {
+        $this->bus->dispatch($message);
+    }
+
+    public function publishStopRepeat(StopAnnouncementRepeat $message): void
     {
         $this->bus->dispatch($message);
     }

@@ -54,6 +54,10 @@ final class RecordingCancelPublisher implements PlaybackRequestPublisherInterfac
         $this->cancels[] = $message;
     }
 
+    public function publishStopRepeat(\App\Announcements\Application\Playback\StopAnnouncementRepeat $message): void
+    {
+    }
+
     public function publishStop(StopAnnouncementPlayback $message): void
     {
     }

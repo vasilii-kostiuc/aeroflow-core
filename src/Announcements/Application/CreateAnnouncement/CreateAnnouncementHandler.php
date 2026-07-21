@@ -76,6 +76,7 @@ final readonly class CreateAnnouncementHandler
             $resources->gateSnapshot(),
             $audioSequence,
             $command->flightOccurrenceId,
+            $config->getRepeatEveryMinutes(),
         );
         $this->repository->save($announcement);
         $this->events->publish(...$announcement->pullEvents());

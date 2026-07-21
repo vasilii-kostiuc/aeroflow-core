@@ -148,6 +148,12 @@ final class FlightOccurrence extends AggregateRoot
         $this->recordEvent(new CheckInOpened($this->id->toRfc4122(), $announcementId, $this->updatedAt));
     }
 
+    /**
+     * @deprecated task 020 — the continuation is no longer a per-tick dispatcher
+     *   action nor a per-tick Announcement. Playback repeats a single continuation
+     *   Announcement while check-in is open; this method and CheckInContinued are
+     *   kept only for backward compatibility and are no longer wired to any flow.
+     */
     public function continueCheckIn(string $announcementId): void
     {
         $this->assertDeparture('check_in_continuation');

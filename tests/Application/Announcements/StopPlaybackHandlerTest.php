@@ -69,4 +69,8 @@ final class RecordingStopPublisher implements PlaybackRequestPublisherInterface
     {
         $this->stops[] = $message;
     }
+
+    public function publishStopRepeat(\App\Announcements\Application\Playback\StopAnnouncementRepeat $message): void
+    {
+    }
 }

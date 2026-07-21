@@ -8,6 +8,7 @@ use App\Announcements\Domain\Enum\AnnouncementStatus;
 use App\Announcements\Domain\Enum\AnnouncementType;
 use App\Announcements\Domain\Event\AnnouncementCancelled;
 use App\Announcements\Domain\Event\AnnouncementCreated;
+use App\Announcements\Domain\Event\AnnouncementRepeatEnded;
 use App\Announcements\Domain\Exception\InvalidAnnouncementResourcesException;
 use App\Announcements\Domain\Exception\InvalidFlightDefinitionIdException;
 use App\Announcements\Domain\ValueObject\AnnouncementLanguages;
@@ -47,10 +48,20 @@ final class Announcement extends AggregateRoot
     private array $audioSequence;
     #[ORM\Column(length: 32, enumType: AnnouncementStatus::class)]
     private AnnouncementStatus $status;
+    /**
+     * Repeat interval in minutes for a continuation announcement (task 020); null for
+     * one-shot types. Owned here because the announcement owns the playback payload —
+     * the publisher reads it to build the neutral repeatRule.
+     */
+    #[ORM\Column(nullable: true)]
+    private ?int $repeatEveryMinutes;
     #[ORM\Column]
     private DateTimeImmutable $createdAt;
     #[ORM\Column(nullable: true)]
     private ?DateTimeImmutable $cancelledAt;
+    /** Set when the repeat series is ended on check-in close; never a cancellation. */
+    #[ORM\Column(nullable: true)]
+    private ?DateTimeImmutable $repeatEndedAt;
 
     private function __construct()
     {
@@ -69,6 +80,7 @@ final class Announcement extends AggregateRoot
         ?array $gate,
         array $audioSequence,
         ?string $flightOccurrenceId = null,
+        ?int $repeatEveryMinutes = null,
     ): self {
         if (!Uuid::isValid($flightDefinitionId)) {
             throw InvalidFlightDefinitionIdException::forValue($flightDefinitionId);
@@ -94,8 +106,11 @@ final class Announcement extends AggregateRoot
         $announcement->languageCodes = $languages->toStrings();
         $announcement->audioSequence = $audioSequence;
         $announcement->status = AnnouncementStatus::Prepared;
+        // Only the continuation type repeats; ignore a stray interval on other types.
+        $announcement->repeatEveryMinutes = $type->isRepeatable() ? $repeatEveryMinutes : null;
         $announcement->createdAt = $now;
         $announcement->cancelledAt = null;
+        $announcement->repeatEndedAt = null;
         $announcement->recordEvent(new AnnouncementCreated(
             $announcement->id->toRfc4122(),
             $type->value,
@@ -117,6 +132,35 @@ final class Announcement extends AggregateRoot
         $this->recordEvent(new AnnouncementCancelled($this->id->toRfc4122(), $this->cancelledAt));
 
         return true;
+    }
+
+    /**
+     * End the repeat series of this continuation announcement (task 020), because
+     * check-in closed. Neutral: the announcement stays Prepared, only its series
+     * stops. Idempotent and meaningful only for a repeatable, still-active series —
+     * records the event on the first transition so a repeated end never duplicates
+     * the outbound StopAnnouncementRepeat.
+     */
+    public function endRepeat(): bool
+    {
+        if (!$this->type->isRepeatable() || $this->repeatEndedAt !== null) {
+            return false;
+        }
+
+        $this->repeatEndedAt = self::now();
+        $this->recordEvent(new AnnouncementRepeatEnded($this->id->toRfc4122(), $this->repeatEndedAt));
+
+        return true;
+    }
+
+    /**
+     * The neutral repeat rule for the playback contract, or null when one-shot.
+     *
+     * @return array{everyMinutes:int}|null
+     */
+    public function repeatRule(): ?array
+    {
+        return $this->repeatEveryMinutes === null ? null : ['everyMinutes' => $this->repeatEveryMinutes];
     }
 
     public function getId(): Uuid
@@ -175,6 +219,11 @@ final class Announcement extends AggregateRoot
     public function getCancelledAt(): ?DateTimeImmutable
     {
         return $this->cancelledAt;
+    }
+
+    public function getRepeatEndedAt(): ?DateTimeImmutable
+    {
+        return $this->repeatEndedAt;
     }
 
     private static function now(): DateTimeImmutable

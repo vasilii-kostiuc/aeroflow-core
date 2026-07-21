@@ -14,6 +14,7 @@ use App\AudioCatalog\Domain\Exception\AudioPromptAssetUnavailableException;
 use App\AudioCatalog\Domain\Exception\AudioPromptNotFoundException;
 use App\AudioCatalog\Domain\Exception\DuplicateAudioPromptException;
 use App\AudioCatalog\Domain\Exception\InvalidAudioAssetUploadException;
+use App\AudioCatalog\Domain\Exception\TextToSpeechUnavailableException;
 use App\FlightOperations\Domain\Exception\AirportNotFoundException;
 use App\FlightOperations\Domain\Exception\DuplicateAirportException;
 use App\FlightOperations\Domain\Exception\DuplicateFlightDefinitionException;
@@ -53,6 +54,7 @@ final class DomainExceptionHttpStatusMapper
         AudioAssetUnavailableException::class => Response::HTTP_UNPROCESSABLE_ENTITY,
         InvalidAudioAssetUploadException::class => Response::HTTP_UNPROCESSABLE_ENTITY,
         AudioPromptAssetUnavailableException::class => Response::HTTP_UNPROCESSABLE_ENTITY,
+        TextToSpeechUnavailableException::class => Response::HTTP_BAD_GATEWAY,
         AudioPromptNotFoundException::class => Response::HTTP_NOT_FOUND,
         DuplicateAudioPromptException::class => Response::HTTP_CONFLICT,
         DuplicateOperationalResourceException::class => Response::HTTP_CONFLICT,

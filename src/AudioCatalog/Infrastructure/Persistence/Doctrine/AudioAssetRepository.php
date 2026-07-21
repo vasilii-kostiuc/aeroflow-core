@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\AudioCatalog\Infrastructure\Persistence\Doctrine;
 
 use App\AudioCatalog\Domain\Entity\AudioAsset;
+use App\AudioCatalog\Domain\Enum\AudioAssetSource;
 use App\AudioCatalog\Domain\Repository\AudioAssetRepositoryInterface;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
@@ -32,5 +33,16 @@ final readonly class AudioAssetRepository implements AudioAssetRepositoryInterfa
             ['active' => true],
             ['name' => 'ASC'],
         );
+    }
+
+    public function findActiveGeneratedByContent(string $textHash, string $languageCode, string $voice): array
+    {
+        return array_values($this->entityManager->getRepository(AudioAsset::class)->findBy([
+            'source' => AudioAssetSource::Generated,
+            'active' => true,
+            'ttsTextHash' => $textHash,
+            'languageCode' => $languageCode,
+            'ttsVoice' => $voice,
+        ], ['createdAt' => 'DESC']));
     }
 }

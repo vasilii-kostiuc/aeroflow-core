@@ -9,7 +9,7 @@ use OpenApi\Attributes as OA;
 
 #[OA\Schema(
     schema: 'AudioAssetResult',
-    required: ['id', 'name', 'languageCode', 'active'],
+    required: ['id', 'name', 'languageCode', 'active', 'source'],
 )]
 final readonly class AudioAssetResult
 {
@@ -25,6 +25,8 @@ final readonly class AudioAssetResult
         public ?string $mimeType,
         #[OA\Property(nullable: true, minimum: 1)]
         public ?int $sizeBytes,
+        #[OA\Property(enum: ['uploaded', 'generated'], example: 'uploaded')]
+        public string $source = 'uploaded',
     ) {
     }
 
@@ -37,6 +39,7 @@ final readonly class AudioAssetResult
             active: $asset->isActive(),
             mimeType: $asset->getMimeType(),
             sizeBytes: $asset->getSizeBytes(),
+            source: $asset->getSource()->value,
         );
     }
 }

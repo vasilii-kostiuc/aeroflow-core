@@ -17,4 +17,13 @@ interface AudioAssetRepositoryInterface
      * @return list<AudioAsset>
      */
     public function findActive(): array;
+
+    /**
+     * Active generated assets that carry the same logical TTS content
+     * (text + language + voice), regardless of the voice model version. Used to
+     * hit the generation cache and to retire assets produced by an older model.
+     *
+     * @return list<AudioAsset>
+     */
+    public function findActiveGeneratedByContent(string $textHash, string $languageCode, string $voice): array;
 }

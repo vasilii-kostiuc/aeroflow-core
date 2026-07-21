@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\AudioCatalog\Api\Controller;
 
 use App\AudioCatalog\Application\AudioAssetResult;
+use App\AudioCatalog\Application\GenerateAudioAsset\GenerateAudioAssetCommand;
 use App\AudioCatalog\Application\ListAudioAssets\ListAudioAssetsQuery;
 use App\AudioCatalog\Application\UploadAudioAsset\UploadAudioAssetCommand;
 use App\AudioCatalog\Domain\Exception\InvalidAudioAssetUploadException;
@@ -98,5 +99,50 @@ final readonly class AudioAssetController
         ), AudioAssetResult::class);
 
         return ApiResponse::created($result, 'Audio asset uploaded successfully');
+    }
+
+    #[Route(':generate', methods: ['POST'])]
+    #[OA\Post(
+        summary: 'Generate an audio asset from text via TTS',
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ['text', 'languageCode'],
+                properties: [
+                    new OA\Property(property: 'text', type: 'string', example: 'Рейс 214 приглашается на посадку'),
+                    new OA\Property(property: 'languageCode', type: 'string', example: 'ru'),
+                    new OA\Property(property: 'voice', type: 'string', nullable: true, example: 'dmitri'),
+                ],
+                type: 'object',
+            ),
+        ),
+        responses: [
+            new OA\Response(
+                response: 201,
+                description: 'Audio asset generated (or reused from cache)',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'success', type: 'boolean', example: true),
+                        new OA\Property(property: 'data', ref: new Model(type: AudioAssetResult::class)),
+                    ],
+                    type: 'object',
+                ),
+            ),
+            new OA\Response(response: 422, description: 'Empty text or unsupported language/voice'),
+            new OA\Response(response: 502, description: 'TTS service unavailable'),
+        ],
+    )]
+    public function generate(Request $request): JsonResponse
+    {
+        $payload = $request->toArray();
+        $voice = $payload['voice'] ?? null;
+
+        $result = $this->bus->handleAs(new GenerateAudioAssetCommand(
+            (string) ($payload['text'] ?? ''),
+            (string) ($payload['languageCode'] ?? ''),
+            is_string($voice) ? $voice : null,
+        ), AudioAssetResult::class);
+
+        return ApiResponse::created($result, 'Audio asset generated successfully');
     }
 }

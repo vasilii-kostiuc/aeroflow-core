@@ -127,12 +127,19 @@ services:
     App\AudioCatalog\Application\Storage\AudioAssetStorageInterface:
         alias: App\AudioCatalog\Infrastructure\Storage\LocalAudioAssetStorage
 
+    App\AudioCatalog\Application\Port\Tts\TextToSpeechPort:
+        alias: App\AudioCatalog\Infrastructure\Integration\Tts\HttpTextToSpeechAdapter
+
     App\Localization\Application\LanguageProviderInterface:
         alias: App\Localization\Infrastructure\Config\ConfiguredLanguageProvider
 
     App\AudioCatalog\Infrastructure\Storage\LocalAudioAssetStorage:
         arguments:
             $storageDirectory: '%audio_catalog.storage_directory%'
+
+    App\AudioCatalog\Infrastructure\Integration\Tts\HttpTextToSpeechAdapter:
+        arguments:
+            $baseUrl: '%env(TTS_BASE_URL)%'
 
     App\Localization\Infrastructure\Config\ConfiguredLanguageProvider:
         arguments:

@@ -40,6 +40,19 @@ final class FlightAnnouncementConfigTest extends TestCase
         self::assertContains('text_segment_requires_tts', $config->validationErrors());
     }
 
+    public function testTextSegmentWithResolvedAssetIsReady(): void
+    {
+        $assetId = Uuid::v7()->toRfc4122();
+        $config = FlightAnnouncementConfig::create(Uuid::v7()->toRfc4122(), FlightAnnouncementType::Arrival, true, null);
+        $variant = $config->addVariant(LanguageCode::fromString('en'), 1, [
+            ['sortOrder' => 1, 'type' => 'text', 'text' => 'Arrived', 'audioAssetId' => $assetId],
+        ], true);
+
+        self::assertSame($assetId, $variant->getSegments()[0]->getAudioAssetId()?->toRfc4122());
+        self::assertSame('Arrived', $variant->getSegments()[0]->getText());
+        self::assertSame([], $config->validationErrors());
+    }
+
     public function testActiveLanguageMustBeUnique(): void
     {
         $config = FlightAnnouncementConfig::create(Uuid::v7()->toRfc4122(), FlightAnnouncementType::Arrival, true, null);

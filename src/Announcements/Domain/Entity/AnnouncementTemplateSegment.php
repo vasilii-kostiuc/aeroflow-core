@@ -98,7 +98,7 @@ final class AnnouncementTemplateSegment
         return $segment;
     }
 
-    public static function text(AnnouncementVariant $variant, int $sortOrder, string $text): self
+    public static function text(AnnouncementVariant $variant, int $sortOrder, string $text, ?Uuid $audioAssetId): self
     {
         $segment = self::initialize($variant, $sortOrder, AnnouncementTemplateSegmentType::Text);
         $text = trim($text);
@@ -107,6 +107,7 @@ final class AnnouncementTemplateSegment
         }
 
         $segment->text = $text;
+        $segment->audioAssetId = $audioAssetId;
 
         return $segment;
     }

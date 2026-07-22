@@ -131,6 +131,17 @@ final class AnnouncementVariant
         return false;
     }
 
+    public function isTtsSegmentsResolved(): bool
+    {
+        foreach ($this->segments as $segment) {
+            if ($segment->getType()->value === 'text' && $segment->getAudioAssetId() === null) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     /** @param list<array{sortOrder:int,type:string,audioAssetId?:?string,slot?:?string,durationMs?:?int,text?:?string}> $segments */
     private function replaceSegments(array $segments): void
     {
@@ -174,6 +185,9 @@ final class AnnouncementVariant
                 $this,
                 $data['sortOrder'],
                 (string) ($data['text'] ?? ''),
+                isset($data['audioAssetId']) && is_string($data['audioAssetId'])
+                    ? $this->parseAudioAssetId($data['audioAssetId'])
+                    : null,
             ),
         };
     }

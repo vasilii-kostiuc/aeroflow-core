@@ -6,6 +6,7 @@ namespace App\Announcements\Application\AddAnnouncementVariant;
 
 use App\Announcements\Application\FlightAnnouncementConfigResult;
 use App\Announcements\Application\Service\AnnouncementSegmentsValidator;
+use App\Announcements\Application\Service\TextSegmentSpeechResolver;
 use App\Announcements\Domain\Entity\FlightAnnouncementConfig;
 use App\Announcements\Domain\Exception\FlightAnnouncementConfigNotFoundException;
 use App\Announcements\Domain\Exception\InvalidFlightDefinitionIdException;
@@ -21,6 +22,7 @@ final readonly class AddAnnouncementVariantHandler
     public function __construct(
         private FlightAnnouncementConfigRepositoryInterface $repository,
         private AnnouncementSegmentsValidator $segmentsValidator,
+        private TextSegmentSpeechResolver $textSegmentSpeechResolver,
         private DomainEventPublisher $events,
     ) {
     }
@@ -29,10 +31,12 @@ final readonly class AddAnnouncementVariantHandler
     {
         $config = $this->findConfig($command->flightDefinitionId, $command->configId);
         $this->segmentsValidator->validate($command->segments);
+        $segments = $this->textSegmentSpeechResolver->resolve($command->segments, $command->languageCode);
+
         $config->addVariant(
             LanguageCode::fromString($command->languageCode),
             $command->sortOrder,
-            $command->segments,
+            $segments,
             $command->enabled,
         );
 

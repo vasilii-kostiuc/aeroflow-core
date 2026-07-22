@@ -65,7 +65,16 @@ final readonly class AnnouncementTemplateResolver
                     continue;
                 }
                 if ($segment->getType() === AnnouncementTemplateSegmentType::Text) {
-                    throw AnnouncementConfigurationNotReadyException::withErrors(['text_segment_requires_tts']);
+                    $id = (string) $segment->getAudioAssetId()?->toRfc4122();
+
+                    if ($id === '') {
+                        throw AnnouncementConfigurationNotReadyException::withErrors(['text_segment_requires_tts']);
+                    }
+                    if (!$this->audioCatalog->isActiveAsset($id)) {
+                        throw AudioAssetUnavailableException::withId($id);
+                    }
+                    $items[] = ['type' => 'audio_asset', 'audioAssetId' => $id];
+                    continue;
                 }
 
                 $resources = $segment->getSlot() === DynamicSlotType::CheckInCounters

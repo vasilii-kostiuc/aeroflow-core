@@ -337,7 +337,7 @@ final class FlightAnnouncementConfig extends AggregateRoot
             $errors[] = 'no_active_variants';
         }
         foreach ($activeVariants as $variant) {
-            if ($variant->requiresTts()) {
+            if ($variant->requiresTts() && !$variant->isTtsSegmentsResolved()) {
                 $errors[] = 'text_segment_requires_tts';
                 break;
             }

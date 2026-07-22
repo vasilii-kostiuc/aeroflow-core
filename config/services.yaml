@@ -106,6 +106,9 @@ services:
     App\Announcements\Application\Port\AudioCatalog\AudioPromptLookupInterface:
         alias: App\Announcements\Infrastructure\Integration\AudioCatalog\AudioCatalogAudioPromptLookup
 
+    App\Announcements\Application\Port\AudioCatalog\SpeechAssetGeneratorInterface:
+        alias: App\Announcements\Infrastructure\Integration\AudioCatalog\AudioCatalogSpeechAssetGenerator
+
     App\Announcements\Application\Port\FlightOperations\OperationalResourceLookupInterface:
         alias: App\Announcements\Infrastructure\Integration\FlightOperations\FlightOperationsOperationalResourceLookup
 

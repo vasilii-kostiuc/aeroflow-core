@@ -9,6 +9,7 @@ use App\Announcements\Application\Port\FlightOperations\OperationalResourceSnaps
 use App\Announcements\Application\Service\AnnouncementTemplateResolver;
 use App\Announcements\Domain\Entity\FlightAnnouncementConfig;
 use App\Announcements\Domain\Enum\FlightAnnouncementType;
+use App\Announcements\Domain\Exception\AudioAssetUnavailableException;
 use App\Announcements\Domain\Exception\MissingAudioPromptsException;
 use App\Shared\Domain\ValueObject\LanguageCode;
 use PHPUnit\Framework\TestCase;
@@ -54,6 +55,36 @@ final class AnnouncementTemplateResolverTest extends TestCase
             [new OperationalResourceSnapshot(Uuid::v7()->toRfc4122(), '3')],
             null,
         );
+    }
+
+    public function testResolvesTextSegmentToItsGeneratedAsset(): void
+    {
+        $assetId = Uuid::v7()->toRfc4122();
+        $config = FlightAnnouncementConfig::create(Uuid::v7()->toRfc4122(), FlightAnnouncementType::Arrival, true, null);
+        $config->addVariant(LanguageCode::fromString('en'), 1, [
+            ['sortOrder' => 1, 'type' => 'text', 'text' => 'Flight arrived', 'audioAssetId' => $assetId],
+        ], true);
+
+        $audio = $this->createStub(AudioPromptLookupInterface::class);
+        $audio->method('isActiveAsset')->willReturn(true);
+
+        $sequence = new AnnouncementTemplateResolver($audio)->resolve($config, ['en'], [], null);
+
+        self::assertSame([['type' => 'audio_asset', 'audioAssetId' => $assetId]], $sequence[0]['items']);
+    }
+
+    public function testRejectsTextSegmentWhoseGeneratedAssetIsInactive(): void
+    {
+        $config = FlightAnnouncementConfig::create(Uuid::v7()->toRfc4122(), FlightAnnouncementType::Arrival, true, null);
+        $config->addVariant(LanguageCode::fromString('en'), 1, [
+            ['sortOrder' => 1, 'type' => 'text', 'text' => 'Flight arrived', 'audioAssetId' => Uuid::v7()->toRfc4122()],
+        ], true);
+
+        $audio = $this->createStub(AudioPromptLookupInterface::class);
+        $audio->method('isActiveAsset')->willReturn(false);
+
+        $this->expectException(AudioAssetUnavailableException::class);
+        new AnnouncementTemplateResolver($audio)->resolve($config, ['en'], [], null);
     }
 
     private function config(): FlightAnnouncementConfig

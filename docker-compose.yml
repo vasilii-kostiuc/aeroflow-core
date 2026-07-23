@@ -11,6 +11,12 @@ services:
       DATABASE_URL: postgresql://aeroflow:aeroflow@aeroflow_core_postgres:5432/aeroflow?serverVersion=16&charset=utf8
       MESSENGER_TRANSPORT_DSN: amqp://guest:guest@aeroflow_core_rabbitmq:5672/%2f/announcement_playback
       MESSENGER_PLAYBACK_EVENTS_DSN: amqp://guest:guest@aeroflow_core_rabbitmq:5672/%2f/playback_events
+      # aeroflow-tts runs as its own compose project, reached over the host like
+      # playback and agent reach core. Synthesis is a pre-step of saving an
+      # announcement config; if it is down, only that save fails.
+      TTS_BASE_URL: http://host.docker.internal:8081
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       aeroflow_core_postgres:
         condition: service_healthy
@@ -36,6 +42,9 @@ services:
       DATABASE_URL: postgresql://aeroflow:aeroflow@aeroflow_core_postgres:5432/aeroflow?serverVersion=16&charset=utf8
       MESSENGER_TRANSPORT_DSN: amqp://guest:guest@aeroflow_core_rabbitmq:5672/%2f/announcement_playback
       MESSENGER_PLAYBACK_EVENTS_DSN: amqp://guest:guest@aeroflow_core_rabbitmq:5672/%2f/playback_events
+      TTS_BASE_URL: http://host.docker.internal:8081
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       aeroflow_core_postgres:
         condition: service_healthy

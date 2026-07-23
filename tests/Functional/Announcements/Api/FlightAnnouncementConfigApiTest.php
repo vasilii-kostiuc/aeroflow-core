@@ -35,9 +35,13 @@ final class FlightAnnouncementConfigApiTest extends WebTestCase
         ]);
         self::assertResponseStatusCodeSame(201);
         $config = $this->response($client)['data'];
-        self::assertFalse($config['isValidForDispatcher']);
-        self::assertContains('text_segment_requires_tts', $config['validationErrors']);
-        $variantId = $config['variants'][0]['id'];
+        // Saving a text segment synthesizes it (task 022), so the variant is
+        // ready right away instead of waiting for a separate voicing step.
+        self::assertTrue($config['isValidForDispatcher']);
+        self::assertSame([], $config['validationErrors']);
+        $variant = $config['variants'][0];
+        self::assertNotNull($variant['segments'][0]['audioAssetId']);
+        $variantId = $variant['id'];
 
         $this->json($client, 'PATCH', sprintf('/api/v1/admin/flight-definitions/%s/announcement-configs/%s/variants/%s', $flightId, $configId, $variantId), [
             'languageCode' => 'ro-MD',
@@ -46,7 +50,10 @@ final class FlightAnnouncementConfigApiTest extends WebTestCase
             'enabled' => false,
         ]);
         self::assertResponseIsSuccessful();
-        self::assertFalse($this->response($client)['data']['isValidForDispatcher']);
+        $config = $this->response($client)['data'];
+        // Disabling the only variant leaves the config with nothing to play.
+        self::assertFalse($config['isValidForDispatcher']);
+        self::assertSame(['no_active_variants'], $config['validationErrors']);
 
         $audioPath = $this->createWavFile();
         $client->request(

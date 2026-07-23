@@ -151,3 +151,11 @@ services:
 when@test:
     parameters:
         audio_catalog.storage_directory: '%kernel.cache_dir%/audio-assets'
+
+    services:
+        # Synthesis is a pre-step of saving a variant, so functional tests would
+        # otherwise depend on a reachable aeroflow-tts. Keep them in-process.
+        App\Tests\Support\StubTextToSpeech: ~
+
+        App\AudioCatalog\Application\Port\Tts\TextToSpeechPort:
+            alias: App\Tests\Support\StubTextToSpeech

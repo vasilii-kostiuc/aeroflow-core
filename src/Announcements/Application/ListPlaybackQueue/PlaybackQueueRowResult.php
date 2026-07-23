@@ -7,6 +7,9 @@ namespace App\Announcements\Application\ListPlaybackQueue;
 /**
  * One row of the dispatcher's queue screen: a playback job described in the
  * language the dispatcher thinks in — flight, announcement type, parameters.
+ *
+ * `nextAt` is filled only for a `rescheduled` row (task 023): a repeat series
+ * resting between ticks, waiting for the moment it sounds again.
  */
 final readonly class PlaybackQueueRowResult
 {
@@ -28,6 +31,7 @@ final readonly class PlaybackQueueRowResult
         public ?string $startedAt,
         public ?string $finishedAt,
         public ?string $failureReason,
+        public ?string $nextAt = null,
     ) {
     }
 }

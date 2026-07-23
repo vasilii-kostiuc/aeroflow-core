@@ -35,6 +35,7 @@ final readonly class DoctrinePlaybackEventReceiptReader implements PlaybackEvent
                 jobId: $receipt->getJobId()->toRfc4122(),
                 receivedAt: $receipt->getReceivedAt(),
                 reason: $receipt->getReason(),
+                nextAt: $receipt->getNextAt(),
             ),
             $receipts,
         );

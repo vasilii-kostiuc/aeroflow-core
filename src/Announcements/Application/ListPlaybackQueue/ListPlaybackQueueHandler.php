@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Announcements\Application\ListPlaybackQueue;
 
 use App\Announcements\Application\Playback\PlaybackEventReceiptReaderInterface;
-use App\Announcements\Application\Playback\PlaybackEventReceiptView;
 use App\Announcements\Application\Port\FlightOperations\FlightDefinitionLookupInterface;
 use App\Announcements\Domain\Repository\AnnouncementRepositoryInterface;
 use DateTimeImmutable;
@@ -17,13 +16,26 @@ use Symfony\Component\Uid\Uuid;
  * Builds the dispatcher's queue view from the recorded playback facts (task 017).
  *
  * Playback stays the source of truth for the actual order; this is an eventual
- * read model derived from the Queued/Started/Completed/Failed receipts of task
- * 015/017, enriched with announcement details. No aggregate is loaded for writing
- * and no playback tables are read — receipts belong to this context.
+ * read model derived from the Queued/Started/Completed/Failed/Cancelled/Interrupted
+ * /Rescheduled receipts, enriched with announcement details. No aggregate is loaded
+ * for writing and no playback tables are read — receipts belong to this context.
+ *
+ * The state of a row is decided by its **last** receipt, not by accumulating flags
+ * (task 023). A repeatable job reuses one jobId for its whole series and alternates
+ * started -> rescheduled -> started, so an accumulated `finishedAt` would pin the row
+ * to the recent section forever and a later `started` could never lift it back.
  */
 #[AsMessageHandler(bus: 'command.bus')]
 final readonly class ListPlaybackQueueHandler
 {
+    /** Facts that end a job for good; anything else leaves it live in the queue. */
+    private const array TERMINAL_EVENTS = [
+        'announcement_playback.completed',
+        'announcement_playback.failed',
+        'announcement_playback.cancelled',
+        'announcement_playback.interrupted',
+    ];
+
     public function __construct(
         private PlaybackEventReceiptReaderInterface $receipts,
         private AnnouncementRepositoryInterface $announcements,
@@ -33,39 +45,31 @@ final readonly class ListPlaybackQueueHandler
 
     public function __invoke(ListPlaybackQueueQuery $query): PlaybackQueueResult
     {
-        $receipts = $this->receipts->listReceivedSince(new DateTimeImmutable('today'));
-
-        /** @var array<string,array{announcementId:string,queuedAt:?DateTimeImmutable,startedAt:?DateTimeImmutable,finishedAt:?DateTimeImmutable,failed:bool,cancelled:bool,interrupted:bool,reason:?string}> $jobs */
+        // Receipts arrive ordered (receivedAt ASC, id ASC), so folding them in order
+        // leaves `lastEvent` holding the latest fact known about each job.
+        /** @var array<string,array{announcementId:string,lastEvent:string,queuedAt:?DateTimeImmutable,startedAt:?DateTimeImmutable,finishedAt:?DateTimeImmutable,reason:?string,nextAt:?string}> $jobs */
         $jobs = [];
-        foreach ($receipts as $receipt) {
+        foreach ($this->receipts->listReceivedSince(new DateTimeImmutable('today')) as $receipt) {
             $job = $jobs[$receipt->jobId] ?? [
                 'announcementId' => $receipt->announcementId,
+                'lastEvent' => $receipt->event,
                 'queuedAt' => null,
                 'startedAt' => null,
                 'finishedAt' => null,
-                'failed' => false,
-                'cancelled' => false,
-                'interrupted' => false,
                 'reason' => null,
+                'nextAt' => null,
             ];
+
+            $job['lastEvent'] = $receipt->event;
+            $job['finishedAt'] = in_array($receipt->event, self::TERMINAL_EVENTS, true)
+                ? $receipt->receivedAt
+                : null;
 
             match ($receipt->event) {
                 'announcement_playback.queued' => $job['queuedAt'] = $receipt->receivedAt,
                 'announcement_playback.started' => $job['startedAt'] = $receipt->receivedAt,
-                'announcement_playback.completed' => $job['finishedAt'] = $receipt->receivedAt,
-                'announcement_playback.failed' => [
-                    $job['finishedAt'] = $receipt->receivedAt,
-                    $job['failed'] = true,
-                    $job['reason'] = $receipt->reason,
-                ],
-                'announcement_playback.cancelled' => [
-                    $job['finishedAt'] = $receipt->receivedAt,
-                    $job['cancelled'] = true,
-                ],
-                'announcement_playback.interrupted' => [
-                    $job['finishedAt'] = $receipt->receivedAt,
-                    $job['interrupted'] = true,
-                ],
+                'announcement_playback.failed' => $job['reason'] = $receipt->reason,
+                'announcement_playback.rescheduled' => $job['nextAt'] = $receipt->nextAt,
                 default => null,
             };
 
@@ -82,17 +86,18 @@ final readonly class ListPlaybackQueueHandler
                 continue;
             }
 
-            if ($job['finishedAt'] !== null) {
-                $recent[] = [$job['finishedAt'], $row];
-            } elseif ($job['startedAt'] !== null) {
-                $playing = $row;
-            } else {
-                $waiting[] = [$job['queuedAt'], $row];
-            }
+            match ($row->state) {
+                'playing' => $playing = $row,
+                'waiting' => $waiting[] = [$job['queuedAt'], $row],
+                // A resting repeat series queues by the moment it will sound again,
+                // not by the moment its series was originally queued.
+                'rescheduled' => $waiting[] = [$this->parse($job['nextAt']) ?? $job['queuedAt'], $row],
+                default => $recent[] = [$job['finishedAt'], $row],
+            };
         }
 
         // All current announcements share one priority (flight = 100), so queue
-        // order approximates to FIFO by the moment the Queued fact arrived.
+        // order approximates to FIFO by the moment the row became due.
         usort($waiting, static fn (array $a, array $b): int => $a[0] <=> $b[0]);
         usort($recent, static fn (array $a, array $b): int => $b[0] <=> $a[0]);
 
@@ -107,7 +112,7 @@ final readonly class ListPlaybackQueueHandler
     }
 
     /**
-     * @param array{announcementId:string,queuedAt:?DateTimeImmutable,startedAt:?DateTimeImmutable,finishedAt:?DateTimeImmutable,failed:bool,cancelled:bool,interrupted:bool,reason:?string} $job
+     * @param array{announcementId:string,lastEvent:string,queuedAt:?DateTimeImmutable,startedAt:?DateTimeImmutable,finishedAt:?DateTimeImmutable,reason:?string,nextAt:?string} $job
      */
     private function row(string $jobId, array $job): ?PlaybackQueueRowResult
     {
@@ -118,12 +123,13 @@ final readonly class ListPlaybackQueueHandler
 
         $flight = $this->flightDefinitions->findById($announcement->getFlightDefinitionId());
 
-        $state = match (true) {
-            $job['failed'] => 'failed',
-            $job['cancelled'] => 'cancelled',
-            $job['interrupted'] => 'interrupted',
-            $job['finishedAt'] !== null => 'completed',
-            $job['startedAt'] !== null => 'playing',
+        $state = match ($job['lastEvent']) {
+            'announcement_playback.completed' => 'completed',
+            'announcement_playback.failed' => 'failed',
+            'announcement_playback.cancelled' => 'cancelled',
+            'announcement_playback.interrupted' => 'interrupted',
+            'announcement_playback.started' => 'playing',
+            'announcement_playback.rescheduled' => 'rescheduled',
             default => 'waiting',
         };
 
@@ -140,6 +146,17 @@ final readonly class ListPlaybackQueueHandler
             startedAt: $job['startedAt']?->format(DateTimeInterface::ATOM),
             finishedAt: $job['finishedAt']?->format(DateTimeInterface::ATOM),
             failureReason: $job['reason'],
+            nextAt: $state === 'rescheduled' ? $job['nextAt'] : null,
         );
+    }
+
+    /** The contract sends nextAt as an ATOM string; an unparsable value just sorts last. */
+    private function parse(?string $moment): ?DateTimeImmutable
+    {
+        if ($moment === null) {
+            return null;
+        }
+
+        return DateTimeImmutable::createFromFormat(DateTimeInterface::ATOM, $moment) ?: null;
     }
 }

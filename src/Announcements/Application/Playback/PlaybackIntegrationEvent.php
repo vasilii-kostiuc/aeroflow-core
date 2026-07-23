@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace App\Announcements\Application\Playback;
 
 /**
- * Inbound integration event from aeroflow-playback (queued / started / completed).
+ * Inbound integration event from aeroflow-playback (queued / started / completed /
+ * failed / cancelled / interrupted / rescheduled).
  *
  * Core owns its own copy of the contract: the message is rebuilt from the JSON body
  * by a transport serializer, discriminated by the `event` field — never by
@@ -24,6 +25,7 @@ final readonly class PlaybackIntegrationEvent
         public string $occurredAt,
         public int $schemaVersion,
         public ?string $reason = null,
+        public ?string $nextAt = null,
     ) {
     }
 }

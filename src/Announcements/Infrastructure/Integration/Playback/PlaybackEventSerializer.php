@@ -58,6 +58,7 @@ final class PlaybackEventSerializer implements SerializerInterface
             occurredAt: (string) ($data['occurredAt'] ?? ''),
             schemaVersion: (int) ($data['schemaVersion'] ?? 1),
             reason: isset($data['reason']) ? (string) $data['reason'] : null,
+            nextAt: isset($data['nextAt']) ? (string) $data['nextAt'] : null,
         )), $encodedEnvelope);
     }
 
@@ -86,6 +87,9 @@ final class PlaybackEventSerializer implements SerializerInterface
         ];
         if ($message->reason !== null) {
             $body['reason'] = $message->reason;
+        }
+        if ($message->nextAt !== null) {
+            $body['nextAt'] = $message->nextAt;
         }
         $body['occurredAt'] = $message->occurredAt;
         $body['schemaVersion'] = $message->schemaVersion;

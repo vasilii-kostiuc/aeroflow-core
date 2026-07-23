@@ -17,6 +17,7 @@ final readonly class PlaybackEventReceiptView
         public string $jobId,
         public DateTimeImmutable $receivedAt,
         public ?string $reason = null,
+        public ?string $nextAt = null,
     ) {
     }
 }

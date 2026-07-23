@@ -31,6 +31,7 @@ final readonly class DoctrinePlaybackEventReceiptRecorder implements PlaybackEve
             $event->jobId,
             $event->occurredAt,
             $event->reason,
+            $event->nextAt,
         ));
         $this->entityManager->flush();
 

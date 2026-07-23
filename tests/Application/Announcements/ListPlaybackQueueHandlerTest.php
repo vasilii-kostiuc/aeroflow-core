@@ -17,6 +17,7 @@ use App\Announcements\Domain\Repository\AnnouncementRepositoryInterface;
 use App\Announcements\Domain\ValueObject\AnnouncementLanguages;
 use App\Shared\Domain\ValueObject\LanguageCode;
 use DateTimeImmutable;
+use DateTimeInterface;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
@@ -120,6 +121,98 @@ final class ListPlaybackQueueHandlerTest extends TestCase
         self::assertNull($result->recent[0]->failureReason);
     }
 
+    public function testRepeatSeriesAlternatesBetweenPlayingAndWaitingForNextTick(): void
+    {
+        $announcement = $this->announcement();
+        $jobId = Uuid::v7()->toRfc4122();
+
+        // One jobId for the whole series: queued -> tick -> re-arm -> next tick.
+        $receipts = [
+            $this->receipt('queued', $announcement, $jobId, '09:00:00'),
+            $this->receipt('started', $announcement, $jobId, '09:10:00'),
+            $this->receipt('rescheduled', $announcement, $jobId, '09:10:30', nextAt: '09:20:30'),
+        ];
+
+        $resting = $this->handler($receipts, [$announcement])(new ListPlaybackQueueQuery());
+
+        self::assertNull($resting->playing);
+        self::assertSame([], $resting->recent);
+        self::assertCount(1, $resting->waiting);
+        self::assertSame('rescheduled', $resting->waiting[0]->state);
+        self::assertSame(
+            $this->moment('09:20:30')->format(DateTimeInterface::ATOM),
+            $resting->waiting[0]->nextAt,
+        );
+        self::assertNull($resting->waiting[0]->finishedAt);
+
+        // The next tick lifts the very same row back into the playing slot.
+        $receipts[] = $this->receipt('started', $announcement, $jobId, '09:20:30');
+        $sounding = $this->handler($receipts, [$announcement])(new ListPlaybackQueueQuery());
+
+        self::assertSame([], $sounding->waiting);
+        self::assertNotNull($sounding->playing);
+        self::assertSame($jobId, $sounding->playing->jobId);
+        self::assertSame('playing', $sounding->playing->state);
+        self::assertNull($sounding->playing->nextAt);
+
+        // Closing check-in ends the series, and only then the row is finished.
+        $receipts[] = $this->receipt('completed', $announcement, $jobId, '09:21:00');
+        $ended = $this->handler($receipts, [$announcement])(new ListPlaybackQueueQuery());
+
+        self::assertNull($ended->playing);
+        self::assertSame([], $ended->waiting);
+        self::assertCount(1, $ended->recent);
+        self::assertSame('completed', $ended->recent[0]->state);
+    }
+
+    public function testRestingRepeatSeriesDoesNotTakeThePlayingSlot(): void
+    {
+        $continuation = $this->announcement();
+        $boarding = $this->announcement();
+        $continuationJob = Uuid::v7()->toRfc4122();
+        $boardingJob = Uuid::v7()->toRfc4122();
+
+        $receipts = [
+            $this->receipt('queued', $continuation, $continuationJob, '09:00:00'),
+            $this->receipt('started', $continuation, $continuationJob, '09:10:00'),
+            $this->receipt('rescheduled', $continuation, $continuationJob, '09:10:30', nextAt: '09:20:30'),
+            $this->receipt('queued', $boarding, $boardingJob, '09:12:00'),
+            $this->receipt('started', $boarding, $boardingJob, '09:12:01'),
+        ];
+
+        $result = $this->handler($receipts, [$continuation, $boarding])(new ListPlaybackQueueQuery());
+
+        self::assertNotNull($result->playing);
+        self::assertSame($boardingJob, $result->playing->jobId);
+        self::assertSame([$continuationJob], array_map(
+            static fn ($row) => $row->jobId,
+            $result->waiting,
+        ));
+    }
+
+    public function testRestingSeriesQueuesByItsNextTickNotByItsOriginalQueuedAt(): void
+    {
+        $series = $this->announcement();
+        $later = $this->announcement();
+        $seriesJob = Uuid::v7()->toRfc4122();
+        $laterJob = Uuid::v7()->toRfc4122();
+
+        $receipts = [
+            // Queued first, but its next tick is due after the other row was queued.
+            $this->receipt('queued', $series, $seriesJob, '09:00:00'),
+            $this->receipt('started', $series, $seriesJob, '09:10:00'),
+            $this->receipt('rescheduled', $series, $seriesJob, '09:10:30', nextAt: '09:20:30'),
+            $this->receipt('queued', $later, $laterJob, '09:15:00'),
+        ];
+
+        $result = $this->handler($receipts, [$series, $later])(new ListPlaybackQueueQuery());
+
+        self::assertSame([$laterJob, $seriesJob], array_map(
+            static fn ($row) => $row->jobId,
+            $result->waiting,
+        ));
+    }
+
     public function testRecentIsLimited(): void
     {
         $receipts = [];
@@ -191,14 +284,22 @@ final class ListPlaybackQueueHandlerTest extends TestCase
         string $jobId,
         string $time,
         ?string $reason = null,
+        ?string $nextAt = null,
     ): PlaybackEventReceiptView {
         return new PlaybackEventReceiptView(
             event: 'announcement_playback.'.$shortEvent,
             announcementId: $announcement->getId()->toRfc4122(),
             jobId: $jobId,
-            receivedAt: new DateTimeImmutable('2026-07-10 '.$time),
+            receivedAt: $this->moment($time),
             reason: $reason,
+            // The contract carries nextAt as an ATOM string, as playback sends it.
+            nextAt: $nextAt === null ? null : $this->moment($nextAt)->format(DateTimeInterface::ATOM),
         );
+    }
+
+    private function moment(string $time): DateTimeImmutable
+    {
+        return new DateTimeImmutable('2026-07-10 '.$time);
     }
 
     private function announcement(): Announcement

@@ -47,6 +47,13 @@ class PlaybackEventReceipt
     #[ORM\Column(nullable: true)]
     private ?string $reason;
 
+    /**
+     * When the next repeat tick is due (contract field, as sent). Only rescheduled
+     * events carry one — task 023.
+     */
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $nextAt;
+
     #[ORM\Column]
     private DateTimeImmutable $receivedAt;
 
@@ -61,6 +68,7 @@ class PlaybackEventReceipt
         string $jobId,
         string $occurredAt,
         ?string $reason = null,
+        ?string $nextAt = null,
     ): self {
         $receipt = new self();
         $receipt->id = Uuid::v7();
@@ -70,6 +78,7 @@ class PlaybackEventReceipt
         $receipt->jobId = Uuid::fromString($jobId);
         $receipt->occurredAt = $occurredAt;
         $receipt->reason = $reason;
+        $receipt->nextAt = $nextAt;
         $receipt->receivedAt = new DateTimeImmutable();
 
         return $receipt;
@@ -108,6 +117,11 @@ class PlaybackEventReceipt
     public function getReason(): ?string
     {
         return $this->reason;
+    }
+
+    public function getNextAt(): ?string
+    {
+        return $this->nextAt;
     }
 
     public function getReceivedAt(): DateTimeImmutable

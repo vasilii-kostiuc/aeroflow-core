@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\AudioCatalog\Application\UploadAudioAsset;
 
 use App\AudioCatalog\Application\AudioAssetResult;
-use App\AudioCatalog\Application\Storage\AudioAssetStorageInterface;
+use App\AudioCatalog\Application\Support\StoredAudioFile;
 use App\AudioCatalog\Domain\Entity\AudioAsset;
 use App\AudioCatalog\Domain\Exception\InvalidAudioAssetUploadException;
 use App\AudioCatalog\Domain\Repository\AudioAssetRepositoryInterface;
@@ -14,7 +14,6 @@ use App\Shared\Application\Event\DomainEventPublisher;
 use App\Shared\Domain\ValueObject\LanguageCode;
 use finfo;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
-use Throwable;
 
 #[AsMessageHandler(bus: 'command.bus')]
 final readonly class UploadAudioAssetHandler
@@ -23,7 +22,7 @@ final readonly class UploadAudioAssetHandler
 
     public function __construct(
         private AudioAssetRepositoryInterface $repository,
-        private AudioAssetStorageInterface $storage,
+        private StoredAudioFile $storedFile,
         private DomainEventPublisher $events,
     ) {
     }
@@ -51,22 +50,22 @@ final readonly class UploadAudioAssetHandler
             throw InvalidAudioAssetUploadException::unsupportedFormat(is_string($detectedMimeType) ? $detectedMimeType : 'unknown');
         }
 
-        $storageKey = $this->storage->store($command->temporaryPath, $format->extension);
+        $asset = $this->storedFile->fromFile(
+            $command->temporaryPath,
+            $format->extension,
+            function (string $storageKey) use ($command, $originalName, $format): AudioAsset {
+                $asset = AudioAsset::upload(
+                    $originalName,
+                    LanguageCode::fromString($command->languageCode),
+                    $storageKey,
+                    $format->mimeType,
+                    $command->sizeBytes,
+                );
+                $this->repository->save($asset);
 
-        try {
-            $asset = AudioAsset::upload(
-                $originalName,
-                LanguageCode::fromString($command->languageCode),
-                $storageKey,
-                $format->mimeType,
-                $command->sizeBytes,
-            );
-            $this->repository->save($asset);
-        } catch (Throwable $exception) {
-            $this->storage->delete($storageKey);
-
-            throw $exception;
-        }
+                return $asset;
+            },
+        );
 
         $this->events->publish(...$asset->pullEvents());
 

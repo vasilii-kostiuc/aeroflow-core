@@ -6,7 +6,7 @@ namespace App\AudioCatalog\Application\GenerateAudioAsset;
 
 use App\AudioCatalog\Application\AudioAssetResult;
 use App\AudioCatalog\Application\Port\Tts\TextToSpeechPort;
-use App\AudioCatalog\Application\Storage\AudioAssetStorageInterface;
+use App\AudioCatalog\Application\Support\StoredAudioFile;
 use App\AudioCatalog\Domain\Entity\AudioAsset;
 use App\AudioCatalog\Domain\Repository\AudioAssetRepositoryInterface;
 use App\AudioCatalog\Domain\ValueObject\AudioFormat;
@@ -14,7 +14,6 @@ use App\AudioCatalog\Domain\ValueObject\SynthesisText;
 use App\Shared\Application\Event\DomainEventPublisher;
 use App\Shared\Domain\ValueObject\LanguageCode;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
-use Throwable;
 
 /**
  * Turns text into an AudioAsset(source=generated) via the TTS service.
@@ -32,7 +31,7 @@ final readonly class GenerateAudioAssetHandler
 {
     public function __construct(
         private AudioAssetRepositoryInterface $repository,
-        private AudioAssetStorageInterface $storage,
+        private StoredAudioFile $storedFile,
         private TextToSpeechPort $tts,
         private DomainEventPublisher $events,
     ) {
@@ -61,25 +60,25 @@ final readonly class GenerateAudioAssetHandler
         $format = AudioFormat::tryFromMimeType($audio->mimeType);
         $extension = null !== $format ? $format->extension : 'wav';
 
-        $storageKey = $this->storage->storeContents($audio->bytes, $extension);
+        $asset = $this->storedFile->fromContents(
+            $audio->bytes,
+            $extension,
+            function (string $storageKey) use ($text, $languageCode, $language, $audio, $extension, $textHash, $voice): AudioAsset {
+                $asset = AudioAsset::generate(
+                    $this->buildName($text->value, $languageCode, $extension),
+                    $language,
+                    $storageKey,
+                    $audio->mimeType,
+                    strlen($audio->bytes),
+                    $textHash,
+                    $voice->voice,
+                    $voice->modelVersion,
+                );
+                $this->repository->save($asset);
 
-        try {
-            $asset = AudioAsset::generate(
-                $this->buildName($text->value, $languageCode, $extension),
-                $language,
-                $storageKey,
-                $audio->mimeType,
-                strlen($audio->bytes),
-                $textHash,
-                $voice->voice,
-                $voice->modelVersion,
-            );
-            $this->repository->save($asset);
-        } catch (Throwable $exception) {
-            $this->storage->delete($storageKey);
-
-            throw $exception;
-        }
+                return $asset;
+            },
+        );
 
         // A model upgrade superseded these: keep them for existing announcements
         // but stop them from being reused for new ones.

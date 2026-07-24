@@ -10,6 +10,7 @@ use App\AudioCatalog\Application\Port\Tts\SynthesizedAudio;
 use App\AudioCatalog\Application\Port\Tts\TextToSpeechPort;
 use App\AudioCatalog\Application\Port\Tts\TtsVoice;
 use App\AudioCatalog\Application\Storage\AudioAssetStorageInterface;
+use App\AudioCatalog\Application\Support\StoredAudioFile;
 use App\AudioCatalog\Domain\Entity\AudioAsset;
 use App\AudioCatalog\Domain\Enum\AudioAssetSource;
 use App\AudioCatalog\Domain\Event\AudioAssetGenerated;
@@ -30,7 +31,7 @@ final class GenerateAudioAssetHandlerTest extends TestCase
 
         $handler = new GenerateAudioAssetHandler(
             $this->createStub(AudioAssetRepositoryInterface::class),
-            $this->createStub(AudioAssetStorageInterface::class),
+            new StoredAudioFile($this->createStub(AudioAssetStorageInterface::class)),
             $tts,
             new RecordingEventPublisher(),
         );
@@ -55,7 +56,7 @@ final class GenerateAudioAssetHandlerTest extends TestCase
         $events = new RecordingEventPublisher();
         $handler = new GenerateAudioAssetHandler(
             $repository,
-            $this->createStub(AudioAssetStorageInterface::class),
+            new StoredAudioFile($this->createStub(AudioAssetStorageInterface::class)),
             $tts,
             $events,
         );
@@ -81,7 +82,7 @@ final class GenerateAudioAssetHandlerTest extends TestCase
         $tts->expects(self::once())->method('synthesize')->willReturn(new SynthesizedAudio('RIFFwav-bytes', 'audio/wav'));
 
         $events = new RecordingEventPublisher();
-        $handler = new GenerateAudioAssetHandler($repository, $storage, $tts, $events);
+        $handler = new GenerateAudioAssetHandler($repository, new StoredAudioFile($storage), $tts, $events);
 
         $result = $handler(new GenerateAudioAssetCommand('Рейс 214', 'ru'));
 
@@ -111,7 +112,7 @@ final class GenerateAudioAssetHandlerTest extends TestCase
         $tts->method('describeVoice')->willReturn(new TtsVoice('dmitri', 'ru', 'v1'));
         $tts->expects(self::once())->method('synthesize')->willReturn(new SynthesizedAudio('new-audio', 'audio/wav'));
 
-        $handler = new GenerateAudioAssetHandler($repository, $storage, $tts, new RecordingEventPublisher());
+        $handler = new GenerateAudioAssetHandler($repository, new StoredAudioFile($storage), $tts, new RecordingEventPublisher());
 
         $result = $handler(new GenerateAudioAssetCommand('Рейс 214', 'ru'));
 
@@ -127,13 +128,13 @@ final class GenerateAudioAssetHandlerTest extends TestCase
         $repository->expects(self::never())->method('save');
 
         $storage = $this->createMock(AudioAssetStorageInterface::class);
-        $storage->expects(self::never())->method('store');
+        $storage->expects(self::never())->method('storeContents');
 
         $tts = $this->createStub(TextToSpeechPort::class);
         $tts->method('describeVoice')->willReturn(new TtsVoice('dmitri', 'ru', 'v1'));
         $tts->method('synthesize')->willThrowException(TextToSpeechUnavailableException::synthesisFailed('down'));
 
-        $handler = new GenerateAudioAssetHandler($repository, $storage, $tts, new RecordingEventPublisher());
+        $handler = new GenerateAudioAssetHandler($repository, new StoredAudioFile($storage), $tts, new RecordingEventPublisher());
 
         $this->expectException(TextToSpeechUnavailableException::class);
         $handler(new GenerateAudioAssetCommand('Рейс 214', 'ru'));

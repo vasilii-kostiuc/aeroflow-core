@@ -38,6 +38,19 @@ final class LocalAudioAssetStorageTest extends TestCase
         unlink($source);
     }
 
+    public function testStoreContentsWritesBytesReadableBackThroughStream(): void
+    {
+        $storage = new LocalAudioAssetStorage($this->directory, new Filesystem());
+
+        $storageKey = $storage->storeContents('RIFF-generated-bytes', 'wav');
+        $stream = $storage->readStream($storageKey);
+
+        self::assertStringEndsWith('.wav', $storageKey);
+        self::assertIsResource($stream);
+        self::assertSame('RIFF-generated-bytes', stream_get_contents($stream));
+        fclose($stream);
+    }
+
     public function testReadStreamReturnsNullForMissingFile(): void
     {
         $storage = new LocalAudioAssetStorage($this->directory, new Filesystem());

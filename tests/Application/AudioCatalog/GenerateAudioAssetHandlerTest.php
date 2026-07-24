@@ -74,7 +74,7 @@ final class GenerateAudioAssetHandlerTest extends TestCase
         $repository->expects(self::once())->method('save');
 
         $storage = $this->createMock(AudioAssetStorageInterface::class);
-        $storage->expects(self::once())->method('store')->willReturn('generated-key.wav');
+        $storage->expects(self::once())->method('storeContents')->willReturn('generated-key.wav');
 
         $tts = $this->createMock(TextToSpeechPort::class);
         $tts->method('describeVoice')->willReturn(new TtsVoice('dmitri', 'ru', 'v1'));
@@ -105,7 +105,7 @@ final class GenerateAudioAssetHandlerTest extends TestCase
         });
 
         $storage = $this->createStub(AudioAssetStorageInterface::class);
-        $storage->method('store')->willReturn('new-key.wav');
+        $storage->method('storeContents')->willReturn('new-key.wav');
 
         $tts = $this->createMock(TextToSpeechPort::class);
         $tts->method('describeVoice')->willReturn(new TtsVoice('dmitri', 'ru', 'v1'));

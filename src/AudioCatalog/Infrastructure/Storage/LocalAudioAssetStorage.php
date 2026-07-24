@@ -19,12 +19,25 @@ final readonly class LocalAudioAssetStorage implements AudioAssetStorageInterfac
 
     public function store(string $sourcePath, string $extension): string
     {
+        return $this->write($extension, static fn (string $target): bool => copy($sourcePath, $target));
+    }
+
+    public function storeContents(string $contents, string $extension): string
+    {
+        return $this->write($extension, static fn (string $target): bool => false !== file_put_contents($target, $contents));
+    }
+
+    /**
+     * @param callable(string): bool $writer receives the target path, returns success
+     */
+    private function write(string $extension, callable $writer): string
+    {
         $this->filesystem->mkdir($this->storageDirectory, 0o750);
         $storageKey = sprintf('%s.%s', Uuid::v7()->toRfc4122(), $extension);
         $targetPath = $this->storageDirectory.DIRECTORY_SEPARATOR.$storageKey;
 
-        if (!copy($sourcePath, $targetPath)) {
-            throw new RuntimeException('Unable to store uploaded audio file.');
+        if (!$writer($targetPath)) {
+            throw new RuntimeException('Unable to store audio file.');
         }
 
         return $storageKey;

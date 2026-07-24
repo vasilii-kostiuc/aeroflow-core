@@ -8,11 +8,11 @@ use App\AudioCatalog\Application\AudioAssetResult;
 use App\AudioCatalog\Application\Port\Tts\TextToSpeechPort;
 use App\AudioCatalog\Application\Storage\AudioAssetStorageInterface;
 use App\AudioCatalog\Domain\Entity\AudioAsset;
-use App\AudioCatalog\Domain\Exception\InvalidSynthesisRequestException;
 use App\AudioCatalog\Domain\Repository\AudioAssetRepositoryInterface;
+use App\AudioCatalog\Domain\ValueObject\AudioFormat;
+use App\AudioCatalog\Domain\ValueObject\SynthesisText;
 use App\Shared\Application\Event\DomainEventPublisher;
 use App\Shared\Domain\ValueObject\LanguageCode;
-use RuntimeException;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Throwable;
 
@@ -30,19 +30,6 @@ use Throwable;
 #[AsMessageHandler(bus: 'command.bus')]
 final readonly class GenerateAudioAssetHandler
 {
-    private const MAX_TEXT_LENGTH = 2000;
-
-    /**
-     * @var array<string, string>
-     */
-    private const EXTENSION_BY_MIME_TYPE = [
-        'audio/wav' => 'wav',
-        'audio/x-wav' => 'wav',
-        'audio/mpeg' => 'mp3',
-        'audio/ogg' => 'ogg',
-        'application/ogg' => 'ogg',
-    ];
-
     public function __construct(
         private AudioAssetRepositoryInterface $repository,
         private AudioAssetStorageInterface $storage,
@@ -53,13 +40,7 @@ final readonly class GenerateAudioAssetHandler
 
     public function __invoke(GenerateAudioAssetCommand $command): AudioAssetResult
     {
-        $text = trim($command->text);
-        if ('' === $text) {
-            throw InvalidSynthesisRequestException::emptyText();
-        }
-        if (mb_strlen($text) > self::MAX_TEXT_LENGTH) {
-            throw InvalidSynthesisRequestException::textTooLong(self::MAX_TEXT_LENGTH);
-        }
+        $text = SynthesisText::fromString($command->text);
 
         $language = LanguageCode::fromString($command->languageCode);
         $languageCode = $language->toString();
@@ -67,7 +48,7 @@ final readonly class GenerateAudioAssetHandler
         $voiceRequest = null !== $command->voice ? trim($command->voice) : null;
         $voice = $this->tts->describeVoice($languageCode, '' === $voiceRequest ? null : $voiceRequest);
 
-        $textHash = hash('sha256', $text);
+        $textHash = hash('sha256', $text->value);
         $candidates = $this->repository->findActiveGeneratedByContent($textHash, $languageCode, $voice->voice);
 
         foreach ($candidates as $candidate) {
@@ -76,19 +57,15 @@ final readonly class GenerateAudioAssetHandler
             }
         }
 
-        $audio = $this->tts->synthesize($text, $languageCode, $voice->voice);
-        $extension = self::EXTENSION_BY_MIME_TYPE[$audio->mimeType] ?? 'wav';
+        $audio = $this->tts->synthesize($text->value, $languageCode, $voice->voice);
+        $format = AudioFormat::tryFromMimeType($audio->mimeType);
+        $extension = null !== $format ? $format->extension : 'wav';
 
-        $spooledPath = $this->spool($audio->bytes);
-        try {
-            $storageKey = $this->storage->store($spooledPath, $extension);
-        } finally {
-            @unlink($spooledPath);
-        }
+        $storageKey = $this->storage->storeContents($audio->bytes, $extension);
 
         try {
             $asset = AudioAsset::generate(
-                $this->buildName($text, $languageCode, $extension),
+                $this->buildName($text->value, $languageCode, $extension),
                 $language,
                 $storageKey,
                 $audio->mimeType,
@@ -114,20 +91,6 @@ final readonly class GenerateAudioAssetHandler
         $this->events->publish(...$asset->pullEvents());
 
         return AudioAssetResult::fromEntity($asset);
-    }
-
-    /**
-     * Writes synthesized bytes to a temporary file so the opaque storage can copy
-     * them in, then removes it. Storage stays path/stream oriented as for uploads.
-     */
-    private function spool(string $bytes): string
-    {
-        $path = tempnam(sys_get_temp_dir(), 'tts-');
-        if (false === $path || false === file_put_contents($path, $bytes)) {
-            throw new RuntimeException('Unable to spool synthesized audio to a temporary file.');
-        }
-
-        return $path;
     }
 
     private function buildName(string $text, string $languageCode, string $extension): string

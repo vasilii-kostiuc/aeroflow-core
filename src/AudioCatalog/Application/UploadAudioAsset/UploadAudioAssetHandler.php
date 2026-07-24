@@ -9,6 +9,7 @@ use App\AudioCatalog\Application\Storage\AudioAssetStorageInterface;
 use App\AudioCatalog\Domain\Entity\AudioAsset;
 use App\AudioCatalog\Domain\Exception\InvalidAudioAssetUploadException;
 use App\AudioCatalog\Domain\Repository\AudioAssetRepositoryInterface;
+use App\AudioCatalog\Domain\ValueObject\AudioFormat;
 use App\Shared\Application\Event\DomainEventPublisher;
 use App\Shared\Domain\ValueObject\LanguageCode;
 use finfo;
@@ -19,17 +20,6 @@ use Throwable;
 final readonly class UploadAudioAssetHandler
 {
     private const MAX_SIZE_BYTES = 50 * 1024 * 1024;
-
-    /**
-     * @var array<string, string>
-     */
-    private const EXTENSION_BY_MIME_TYPE = [
-        'audio/wav' => 'wav',
-        'audio/x-wav' => 'wav',
-        'audio/mpeg' => 'mp3',
-        'audio/ogg' => 'ogg',
-        'application/ogg' => 'ogg',
-    ];
 
     public function __construct(
         private AudioAssetRepositoryInterface $repository,
@@ -55,22 +45,20 @@ final readonly class UploadAudioAssetHandler
             throw InvalidAudioAssetUploadException::invalidName();
         }
 
-        $mimeType = new finfo(FILEINFO_MIME_TYPE)->file($command->temporaryPath);
-        if (!is_string($mimeType) || !isset(self::EXTENSION_BY_MIME_TYPE[$mimeType])) {
-            throw InvalidAudioAssetUploadException::unsupportedFormat(is_string($mimeType) ? $mimeType : 'unknown');
+        $detectedMimeType = new finfo(FILEINFO_MIME_TYPE)->file($command->temporaryPath);
+        $format = is_string($detectedMimeType) ? AudioFormat::tryFromMimeType($detectedMimeType) : null;
+        if (null === $format) {
+            throw InvalidAudioAssetUploadException::unsupportedFormat(is_string($detectedMimeType) ? $detectedMimeType : 'unknown');
         }
 
-        $storageKey = $this->storage->store(
-            $command->temporaryPath,
-            self::EXTENSION_BY_MIME_TYPE[$mimeType],
-        );
+        $storageKey = $this->storage->store($command->temporaryPath, $format->extension);
 
         try {
             $asset = AudioAsset::upload(
                 $originalName,
                 LanguageCode::fromString($command->languageCode),
                 $storageKey,
-                $mimeType,
+                $format->mimeType,
                 $command->sizeBytes,
             );
             $this->repository->save($asset);

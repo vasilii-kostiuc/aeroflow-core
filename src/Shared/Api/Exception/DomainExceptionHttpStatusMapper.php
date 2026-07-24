@@ -10,6 +10,7 @@ use App\Announcements\Domain\Exception\AudioAssetUnavailableException;
 use App\Announcements\Domain\Exception\DuplicateFlightAnnouncementConfigException;
 use App\Announcements\Domain\Exception\FlightAnnouncementConfigNotFoundException;
 use App\Announcements\Domain\Exception\FlightDefinitionNotFoundException as AnnouncementFlightDefinitionNotFoundException;
+use App\Announcements\Domain\Exception\SupplementaryTemplateNotFoundException;
 use App\AudioCatalog\Domain\Exception\AudioPromptAssetUnavailableException;
 use App\AudioCatalog\Domain\Exception\AudioPromptNotFoundException;
 use App\AudioCatalog\Domain\Exception\DuplicateAudioPromptException;
@@ -48,6 +49,7 @@ final class DomainExceptionHttpStatusMapper
         AirportNotFoundException::class => Response::HTTP_NOT_FOUND,
         AnnouncementNotFoundException::class => Response::HTTP_NOT_FOUND,
         AnnouncementFlightDefinitionNotFoundException::class => Response::HTTP_NOT_FOUND,
+        SupplementaryTemplateNotFoundException::class => Response::HTTP_NOT_FOUND,
         DuplicateFlightAnnouncementConfigException::class => Response::HTTP_CONFLICT,
         FlightAnnouncementConfigNotFoundException::class => Response::HTTP_NOT_FOUND,
         AnnouncementVariantNotFoundException::class => Response::HTTP_NOT_FOUND,

@@ -121,7 +121,9 @@ final readonly class ListPlaybackQueueHandler
             return null;
         }
 
-        $flight = $this->flightDefinitions->findById($announcement->getFlightDefinitionId());
+        // Supplementary announcements (task 024) carry no flight; leave flightNumber null.
+        $flightDefinitionId = $announcement->getFlightDefinitionId();
+        $flight = $flightDefinitionId === null ? null : $this->flightDefinitions->findById($flightDefinitionId);
 
         $state = match ($job['lastEvent']) {
             'announcement_playback.completed' => 'completed',

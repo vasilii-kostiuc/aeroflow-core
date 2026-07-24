@@ -97,6 +97,9 @@ services:
     App\Announcements\Domain\Repository\FlightAnnouncementConfigRepositoryInterface:
         alias: App\Announcements\Infrastructure\Persistence\Doctrine\FlightAnnouncementConfigRepository
 
+    App\Announcements\Domain\Repository\SupplementaryAnnouncementTemplateRepositoryInterface:
+        alias: App\Announcements\Infrastructure\Persistence\Doctrine\SupplementaryAnnouncementTemplateRepository
+
     App\Announcements\Application\Port\FlightOperations\FlightDefinitionLookupInterface:
         alias: App\Announcements\Infrastructure\Integration\FlightOperations\FlightOperationsFlightDefinitionLookup
 

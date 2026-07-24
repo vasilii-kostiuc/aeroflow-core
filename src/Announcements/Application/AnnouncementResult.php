@@ -31,10 +31,10 @@ final readonly class AnnouncementResult
     public function __construct(
         #[OA\Property(format: 'uuid')]
         public string $id,
-        #[OA\Property(enum: ['check_in_opening', 'check_in_closing', 'boarding_invitation', 'arrival'])]
+        #[OA\Property(enum: ['check_in_opening', 'check_in_closing', 'boarding_invitation', 'arrival', 'supplementary'])]
         public string $type,
-        #[OA\Property(format: 'uuid')]
-        public string $flightDefinitionId,
+        #[OA\Property(format: 'uuid', nullable: true)]
+        public ?string $flightDefinitionId,
         #[OA\Property(format: 'uuid', nullable: true)]
         public ?string $flightOccurrenceId,
         #[OA\Property(
@@ -99,7 +99,7 @@ final readonly class AnnouncementResult
         return new self(
             $announcement->getId()->toRfc4122(),
             $announcement->getType()->value,
-            $announcement->getFlightDefinitionId()->toRfc4122(),
+            $announcement->getFlightDefinitionId()?->toRfc4122(),
             $announcement->getFlightOccurrenceId()?->toRfc4122(),
             $announcement->getCheckInCounters(),
             $announcement->getGate(),

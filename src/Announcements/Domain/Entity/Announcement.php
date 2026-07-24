@@ -30,8 +30,10 @@ final class Announcement extends AggregateRoot
     private Uuid $id;
     #[ORM\Column(length: 32, enumType: AnnouncementType::class)]
     private AnnouncementType $type;
-    #[ORM\Column(type: UuidType::NAME)]
-    private Uuid $flightDefinitionId;
+    // Null for the airport-wide supplementary announcement (task 024); the five
+    // flight types always carry a definition.
+    #[ORM\Column(type: UuidType::NAME, nullable: true)]
+    private ?Uuid $flightDefinitionId;
     #[ORM\Column(type: UuidType::NAME, nullable: true)]
     private ?Uuid $flightOccurrenceId;
     /** @var list<array{id:string,code:string}> */
@@ -74,7 +76,7 @@ final class Announcement extends AggregateRoot
      */
     public static function createPrepared(
         AnnouncementType $type,
-        string $flightDefinitionId,
+        ?string $flightDefinitionId,
         AnnouncementLanguages $languages,
         array $checkInCounters,
         ?array $gate,
@@ -82,8 +84,16 @@ final class Announcement extends AggregateRoot
         ?string $flightOccurrenceId = null,
         ?int $repeatEveryMinutes = null,
     ): self {
-        if (!Uuid::isValid($flightDefinitionId)) {
-            throw InvalidFlightDefinitionIdException::forValue($flightDefinitionId);
+        if ($type->requiresFlight()) {
+            if ($flightDefinitionId === null) {
+                throw InvalidAnnouncementResourcesException::missingFlightDefinition();
+            }
+            if (!Uuid::isValid($flightDefinitionId)) {
+                throw InvalidFlightDefinitionIdException::forValue($flightDefinitionId);
+            }
+        } elseif ($flightDefinitionId !== null) {
+            // Supplementary is airport-wide: a flight definition here is a modelling error.
+            throw InvalidAnnouncementResourcesException::unexpectedFlightDefinition();
         }
         if ($flightOccurrenceId !== null && !Uuid::isValid($flightOccurrenceId)) {
             throw InvalidFlightDefinitionIdException::forValue($flightOccurrenceId);
@@ -99,7 +109,7 @@ final class Announcement extends AggregateRoot
         $announcement = new self();
         $announcement->id = Uuid::v7();
         $announcement->type = $type;
-        $announcement->flightDefinitionId = Uuid::fromString($flightDefinitionId);
+        $announcement->flightDefinitionId = $flightDefinitionId === null ? null : Uuid::fromString($flightDefinitionId);
         $announcement->flightOccurrenceId = $flightOccurrenceId === null ? null : Uuid::fromString($flightOccurrenceId);
         $announcement->checkInCounters = $checkInCounters;
         $announcement->gate = $gate;
@@ -173,7 +183,7 @@ final class Announcement extends AggregateRoot
         return $this->type;
     }
 
-    public function getFlightDefinitionId(): Uuid
+    public function getFlightDefinitionId(): ?Uuid
     {
         return $this->flightDefinitionId;
     }

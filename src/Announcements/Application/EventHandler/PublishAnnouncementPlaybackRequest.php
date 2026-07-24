@@ -24,12 +24,6 @@ use Symfony\Component\Uid\Uuid;
 #[AsMessageHandler(bus: 'event.bus')]
 final readonly class PublishAnnouncementPlaybackRequest
 {
-    /**
-     * Flight announcements all carry the same playback priority (see priorities in
-     * aeroflow-docs); additional and emergency announcements arrive in later slices.
-     */
-    private const int FLIGHT_ANNOUNCEMENT_PRIORITY = 100;
-
     public function __construct(
         private AnnouncementRepositoryInterface $announcements,
         private PlaybackRequestPublisherInterface $publisher,
@@ -48,7 +42,9 @@ final readonly class PublishAnnouncementPlaybackRequest
             correlationId: $event->announcementId,
             announcementId: $event->announcementId,
             type: $announcement->getType()->value,
-            priority: self::FLIGHT_ANNOUNCEMENT_PRIORITY,
+            // Priority is derived from the type (flight 100, supplementary 50); see
+            // "Приоритеты воспроизведения" in README.md.
+            priority: $announcement->getType()->playbackPriority(),
             audioSequence: $announcement->getAudioSequence(),
             repeatRule: $announcement->repeatRule(),
             occurredAt: $event->occurredAt->format(DateTimeInterface::ATOM),

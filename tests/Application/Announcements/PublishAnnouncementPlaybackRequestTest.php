@@ -56,6 +56,41 @@ final class PublishAnnouncementPlaybackRequestTest extends TestCase
         self::assertSame('announcement_playback.request', $message->command);
     }
 
+    public function testPublishesSupplementaryAnnouncementAtPriority50(): void
+    {
+        $announcement = Announcement::createPrepared(
+            AnnouncementType::Supplementary,
+            null,
+            AnnouncementLanguages::fromCodes(LanguageCode::fromString('en')),
+            [],
+            null,
+            [[
+                'languageCode' => 'en',
+                'sortOrder' => 1,
+                'items' => [['type' => 'audio_asset', 'audioAssetId' => Uuid::v7()->toRfc4122()]],
+            ]],
+        );
+        $announcementId = $announcement->getId()->toRfc4122();
+
+        $announcements = $this->createStub(AnnouncementRepositoryInterface::class);
+        $announcements->method('findById')->willReturn($announcement);
+
+        $publisher = new RecordingPlaybackRequestPublisher();
+        $handler = new PublishAnnouncementPlaybackRequest($announcements, $publisher);
+
+        $handler(new AnnouncementCreated(
+            $announcementId,
+            'supplementary',
+            null,
+            ['en'],
+            new DateTimeImmutable('2026-06-26T10:00:00+00:00'),
+        ));
+
+        self::assertCount(1, $publisher->messages);
+        self::assertSame('supplementary', $publisher->messages[0]->type);
+        self::assertSame(50, $publisher->messages[0]->priority);
+    }
+
     public function testDoesNothingWhenAnnouncementIsMissing(): void
     {
         $announcements = $this->createStub(AnnouncementRepositoryInterface::class);

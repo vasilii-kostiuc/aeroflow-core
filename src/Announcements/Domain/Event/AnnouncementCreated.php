@@ -15,7 +15,7 @@ final readonly class AnnouncementCreated implements DomainEvent
     public function __construct(
         public string $announcementId,
         public string $type,
-        public string $flightDefinitionId,
+        public ?string $flightDefinitionId,
         public array $languages,
         public DateTimeImmutable $occurredAt,
     ) {

@@ -37,6 +37,55 @@ final class AnnouncementTest extends TestCase
         self::assertInstanceOf(AnnouncementCreated::class, $announcement->pullEvents()[0]);
     }
 
+    public function testSupplementaryAnnouncementCarriesNoFlight(): void
+    {
+        $assetId = Uuid::v7()->toRfc4122();
+        $announcement = Announcement::createPrepared(
+            AnnouncementType::Supplementary,
+            null,
+            AnnouncementLanguages::fromCodes(LanguageCode::fromString('en')),
+            [],
+            null,
+            [['languageCode' => 'en', 'sortOrder' => 1, 'items' => [['type' => 'audio_asset', 'audioAssetId' => $assetId]]]],
+        );
+
+        self::assertNull($announcement->getFlightDefinitionId());
+        self::assertSame(AnnouncementStatus::Prepared, $announcement->getStatus());
+        self::assertSame($assetId, $announcement->getAudioSequence()[0]['items'][0]['audioAssetId']);
+
+        $event = $announcement->pullEvents()[0];
+        self::assertInstanceOf(AnnouncementCreated::class, $event);
+        self::assertNull($event->flightDefinitionId);
+    }
+
+    public function testFlightTypeRequiresFlightDefinition(): void
+    {
+        $this->expectException(InvalidAnnouncementResourcesException::class);
+
+        Announcement::createPrepared(
+            AnnouncementType::Arrival,
+            null,
+            AnnouncementLanguages::fromCodes(LanguageCode::fromString('en')),
+            [],
+            null,
+            [['languageCode' => 'en', 'sortOrder' => 1, 'items' => []]],
+        );
+    }
+
+    public function testSupplementaryRejectsFlightDefinition(): void
+    {
+        $this->expectException(InvalidAnnouncementResourcesException::class);
+
+        Announcement::createPrepared(
+            AnnouncementType::Supplementary,
+            Uuid::v7()->toRfc4122(),
+            AnnouncementLanguages::fromCodes(LanguageCode::fromString('en')),
+            [],
+            null,
+            [['languageCode' => 'en', 'sortOrder' => 1, 'items' => []]],
+        );
+    }
+
     public function testCancellationIsIdempotent(): void
     {
         $announcement = $this->arrival();

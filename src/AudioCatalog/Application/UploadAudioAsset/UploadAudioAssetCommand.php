@@ -11,6 +11,8 @@ final readonly class UploadAudioAssetCommand
         public string $originalName,
         public string $languageCode,
         public int $sizeBytes,
+        public ?string $title = null,
+        public ?string $folderId = null,
     ) {
     }
 }

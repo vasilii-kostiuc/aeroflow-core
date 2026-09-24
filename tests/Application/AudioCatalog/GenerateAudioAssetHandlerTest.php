@@ -11,15 +11,20 @@ use App\AudioCatalog\Application\Port\Tts\TextToSpeechPort;
 use App\AudioCatalog\Application\Port\Tts\TtsVoice;
 use App\AudioCatalog\Application\Storage\AudioAssetStorageInterface;
 use App\AudioCatalog\Application\Support\AudioAssetPersister;
+use App\AudioCatalog\Application\Support\AudioFolderResolver;
 use App\AudioCatalog\Domain\Entity\AudioAsset;
+use App\AudioCatalog\Domain\Entity\AudioFolder;
 use App\AudioCatalog\Domain\Enum\AudioAssetSource;
 use App\AudioCatalog\Domain\Event\AudioAssetGenerated;
+use App\AudioCatalog\Domain\Exception\AudioFolderNotFoundException;
 use App\AudioCatalog\Domain\Exception\InvalidSynthesisRequestException;
 use App\AudioCatalog\Domain\Exception\TextToSpeechUnavailableException;
 use App\AudioCatalog\Domain\Repository\AudioAssetRepositoryInterface;
 use App\Shared\Domain\ValueObject\LanguageCode;
+use App\Tests\Support\InMemoryAudioFolderRepository;
 use App\Tests\Support\RecordingEventPublisher;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Uid\Uuid;
 
 final class GenerateAudioAssetHandlerTest extends TestCase
 {
@@ -36,6 +41,7 @@ final class GenerateAudioAssetHandlerTest extends TestCase
                 $this->createStub(AudioAssetRepositoryInterface::class),
             ),
             $tts,
+            new AudioFolderResolver(new InMemoryAudioFolderRepository()),
             new RecordingEventPublisher(),
         );
 
@@ -61,6 +67,7 @@ final class GenerateAudioAssetHandlerTest extends TestCase
             $repository,
             new AudioAssetPersister($this->createStub(AudioAssetStorageInterface::class), $repository),
             $tts,
+            new AudioFolderResolver(new InMemoryAudioFolderRepository()),
             $events,
         );
 
@@ -85,7 +92,7 @@ final class GenerateAudioAssetHandlerTest extends TestCase
         $tts->expects(self::once())->method('synthesize')->willReturn(new SynthesizedAudio('RIFFwav-bytes', 'audio/wav'));
 
         $events = new RecordingEventPublisher();
-        $handler = new GenerateAudioAssetHandler($repository, new AudioAssetPersister($storage, $repository), $tts, $events);
+        $handler = new GenerateAudioAssetHandler($repository, new AudioAssetPersister($storage, $repository), $tts, new AudioFolderResolver(new InMemoryAudioFolderRepository()), $events);
 
         $result = $handler(new GenerateAudioAssetCommand('Рейс 214', 'ru'));
 
@@ -115,7 +122,7 @@ final class GenerateAudioAssetHandlerTest extends TestCase
         $tts->method('describeVoice')->willReturn(new TtsVoice('dmitri', 'ru', 'v1'));
         $tts->expects(self::once())->method('synthesize')->willReturn(new SynthesizedAudio('new-audio', 'audio/wav'));
 
-        $handler = new GenerateAudioAssetHandler($repository, new AudioAssetPersister($storage, $repository), $tts, new RecordingEventPublisher());
+        $handler = new GenerateAudioAssetHandler($repository, new AudioAssetPersister($storage, $repository), $tts, new AudioFolderResolver(new InMemoryAudioFolderRepository()), new RecordingEventPublisher());
 
         $result = $handler(new GenerateAudioAssetCommand('Рейс 214', 'ru'));
 
@@ -137,9 +144,71 @@ final class GenerateAudioAssetHandlerTest extends TestCase
         $tts->method('describeVoice')->willReturn(new TtsVoice('dmitri', 'ru', 'v1'));
         $tts->method('synthesize')->willThrowException(TextToSpeechUnavailableException::synthesisFailed('down'));
 
-        $handler = new GenerateAudioAssetHandler($repository, new AudioAssetPersister($storage, $repository), $tts, new RecordingEventPublisher());
+        $handler = new GenerateAudioAssetHandler($repository, new AudioAssetPersister($storage, $repository), $tts, new AudioFolderResolver(new InMemoryAudioFolderRepository()), new RecordingEventPublisher());
 
         $this->expectException(TextToSpeechUnavailableException::class);
         $handler(new GenerateAudioAssetCommand('Рейс 214', 'ru'));
+    }
+
+    public function testNewAssetIsTitledWithTheTextAndPlacedInFolder(): void
+    {
+        $folder = AudioFolder::create('Экстренные', null);
+        $handler = $this->missHandler(new InMemoryAudioFolderRepository($folder));
+
+        $result = $handler(new GenerateAudioAssetCommand("  Уважаемые\n пассажиры  ", 'ru', null, $folder->getId()->toRfc4122()));
+
+        self::assertSame('Уважаемые пассажиры', $result->title);
+        self::assertSame($folder->getId()->toRfc4122(), $result->folderId);
+    }
+
+    public function testLongTextTitleIsTruncated(): void
+    {
+        $result = $this->missHandler(new InMemoryAudioFolderRepository())(
+            new GenerateAudioAssetCommand(str_repeat('а', 300), 'ru'),
+        );
+
+        self::assertSame(120, mb_strlen($result->title));
+        self::assertStringEndsWith('…', $result->title);
+    }
+
+    public function testUnknownFolderIsRejectedBeforeSynthesis(): void
+    {
+        $tts = $this->createMock(TextToSpeechPort::class);
+        $tts->expects(self::never())->method('synthesize');
+
+        $handler = new GenerateAudioAssetHandler(
+            $this->createStub(AudioAssetRepositoryInterface::class),
+            new AudioAssetPersister(
+                $this->createStub(AudioAssetStorageInterface::class),
+                $this->createStub(AudioAssetRepositoryInterface::class),
+            ),
+            $tts,
+            new AudioFolderResolver(new InMemoryAudioFolderRepository()),
+            new RecordingEventPublisher(),
+        );
+
+        $this->expectException(AudioFolderNotFoundException::class);
+        $handler(new GenerateAudioAssetCommand('Рейс 214', 'ru', null, Uuid::v7()->toRfc4122()));
+    }
+
+    private function missHandler(InMemoryAudioFolderRepository $folders): GenerateAudioAssetHandler
+    {
+        $repository = $this->createStub(AudioAssetRepositoryInterface::class);
+        $repository->method('findActiveGeneratedByContent')->willReturn([]);
+
+        $storage = $this->createStub(AudioAssetStorageInterface::class);
+        $storage->method('storeContents')->willReturn('key.wav');
+
+        $tts = $this->createStub(TextToSpeechPort::class);
+        $tts->method('describeVoice')->willReturn(new TtsVoice('dmitri', 'ru', 'v1'));
+        $tts->method('synthesize')->willReturn(new SynthesizedAudio('RIFF', 'audio/wav'));
+
+        return new GenerateAudioAssetHandler(
+            $repository,
+            new AudioAssetPersister($storage, $repository),
+            $tts,
+            new AudioFolderResolver($folders),
+            new RecordingEventPublisher(),
+        );
     }
 }

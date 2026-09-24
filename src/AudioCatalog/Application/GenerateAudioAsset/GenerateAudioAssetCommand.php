@@ -10,6 +10,7 @@ final readonly class GenerateAudioAssetCommand
         public string $text,
         public string $languageCode,
         public ?string $voice = null,
+        public ?string $folderId = null,
     ) {
     }
 }

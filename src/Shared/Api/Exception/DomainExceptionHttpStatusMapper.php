@@ -12,8 +12,12 @@ use App\Announcements\Domain\Exception\EmergencyTemplateNotFoundException;
 use App\Announcements\Domain\Exception\FlightAnnouncementConfigNotFoundException;
 use App\Announcements\Domain\Exception\FlightDefinitionNotFoundException as AnnouncementFlightDefinitionNotFoundException;
 use App\Announcements\Domain\Exception\SupplementaryTemplateNotFoundException;
+use App\AudioCatalog\Domain\Exception\AudioAssetNotFoundException;
+use App\AudioCatalog\Domain\Exception\AudioFolderNotEmptyException;
+use App\AudioCatalog\Domain\Exception\AudioFolderNotFoundException;
 use App\AudioCatalog\Domain\Exception\AudioPromptAssetUnavailableException;
 use App\AudioCatalog\Domain\Exception\AudioPromptNotFoundException;
+use App\AudioCatalog\Domain\Exception\DuplicateAudioFolderException;
 use App\AudioCatalog\Domain\Exception\DuplicateAudioPromptException;
 use App\AudioCatalog\Domain\Exception\InvalidAudioAssetUploadException;
 use App\AudioCatalog\Domain\Exception\TextToSpeechUnavailableException;
@@ -61,6 +65,10 @@ final class DomainExceptionHttpStatusMapper
         TextToSpeechUnavailableException::class => Response::HTTP_BAD_GATEWAY,
         AudioPromptNotFoundException::class => Response::HTTP_NOT_FOUND,
         DuplicateAudioPromptException::class => Response::HTTP_CONFLICT,
+        AudioAssetNotFoundException::class => Response::HTTP_NOT_FOUND,
+        AudioFolderNotFoundException::class => Response::HTTP_NOT_FOUND,
+        DuplicateAudioFolderException::class => Response::HTTP_CONFLICT,
+        AudioFolderNotEmptyException::class => Response::HTTP_CONFLICT,
         DuplicateOperationalResourceException::class => Response::HTTP_CONFLICT,
         OperationalResourceNotFoundException::class => Response::HTTP_NOT_FOUND,
     ];

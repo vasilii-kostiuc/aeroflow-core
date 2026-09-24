@@ -8,6 +8,7 @@ use App\AudioCatalog\Domain\Entity\AudioAsset;
 use App\AudioCatalog\Domain\Enum\AudioAssetSource;
 use App\AudioCatalog\Domain\Repository\AudioAssetRepositoryInterface;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
 
 final readonly class AudioAssetRepository implements AudioAssetRepositoryInterface
@@ -29,10 +30,19 @@ final readonly class AudioAssetRepository implements AudioAssetRepositoryInterfa
 
     public function findActive(): array
     {
-        return $this->entityManager->getRepository(AudioAsset::class)->findBy(
-            ['active' => true],
-            ['name' => 'ASC'],
-        );
+        // Case-insensitive: the database collation may be byte order (musl), which
+        // would put every capitalised title before every lowercase one.
+        /** @var list<AudioAsset> $assets */
+        $assets = $this->entityManager->createQueryBuilder()
+            ->select('a')
+            ->from(AudioAsset::class, 'a')
+            ->where('a.active = true')
+            ->orderBy('LOWER(a.title)', 'ASC')
+            ->addOrderBy('a.name', 'ASC')
+            ->getQuery()
+            ->getResult();
+
+        return $assets;
     }
 
     public function findActiveGeneratedByContent(string $textHash, string $languageCode, string $voice): array
@@ -44,5 +54,32 @@ final readonly class AudioAssetRepository implements AudioAssetRepositoryInterfa
             'languageCode' => $languageCode,
             'ttsVoice' => $voice,
         ], ['createdAt' => 'DESC']));
+    }
+
+    public function countActiveInFolder(Uuid $folderId): int
+    {
+        return (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(a.id)')
+            ->from(AudioAsset::class, 'a')
+            ->where('a.folderId = :folderId')
+            ->andWhere('a.active = true')
+            ->setParameter('folderId', $folderId, UuidType::NAME)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    public function findInactiveInFolder(Uuid $folderId): array
+    {
+        /** @var list<AudioAsset> $assets */
+        $assets = $this->entityManager->createQueryBuilder()
+            ->select('a')
+            ->from(AudioAsset::class, 'a')
+            ->where('a.folderId = :folderId')
+            ->andWhere('a.active = false')
+            ->setParameter('folderId', $folderId, UuidType::NAME)
+            ->getQuery()
+            ->getResult();
+
+        return $assets;
     }
 }

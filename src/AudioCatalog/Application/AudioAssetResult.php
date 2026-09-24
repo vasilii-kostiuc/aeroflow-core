@@ -9,15 +9,19 @@ use OpenApi\Attributes as OA;
 
 #[OA\Schema(
     schema: 'AudioAssetResult',
-    required: ['id', 'name', 'languageCode', 'active', 'source'],
+    required: ['id', 'name', 'title', 'folderId', 'languageCode', 'active', 'source'],
 )]
 final readonly class AudioAssetResult
 {
     public function __construct(
         #[OA\Property(format: 'uuid')]
         public string $id,
-        #[OA\Property(example: 'gate-a12-en.wav')]
+        #[OA\Property(description: 'Technical file name', example: 'gate-a12-en.wav')]
         public string $name,
+        #[OA\Property(description: 'Human-readable title', example: 'Выход A12')]
+        public string $title,
+        #[OA\Property(description: 'Library folder; null = no folder', format: 'uuid', nullable: true)]
+        public ?string $folderId,
         #[OA\Property(example: 'en')]
         public string $languageCode,
         public bool $active,
@@ -35,6 +39,8 @@ final readonly class AudioAssetResult
         return new self(
             id: $asset->getId()->toRfc4122(),
             name: $asset->getName(),
+            title: $asset->getTitle(),
+            folderId: $asset->getFolderId()?->toRfc4122(),
             languageCode: $asset->getLanguageCode(),
             active: $asset->isActive(),
             mimeType: $asset->getMimeType(),

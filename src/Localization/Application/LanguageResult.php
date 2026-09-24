@@ -17,7 +17,7 @@ final readonly class LanguageResult
         public string $code,
         #[OA\Property(example: 'Romanian (Moldova)')]
         public string $name,
-        #[OA\Property(example: 'Romana')]
+        #[OA\Property(example: 'Română')]
         public string $nativeName,
         public bool $active,
         #[OA\Property(minimum: 1)]

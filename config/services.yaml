@@ -13,7 +13,7 @@ parameters:
         -
             code: 'ro-MD'
             name: 'Romanian (Moldova)'
-            nativeName: 'Romana'
+            nativeName: 'Română'
             active: true
             sortOrder: 1
         -

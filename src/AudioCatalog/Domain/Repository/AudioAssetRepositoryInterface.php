@@ -26,4 +26,15 @@ interface AudioAssetRepositoryInterface
      * @return list<AudioAsset>
      */
     public function findActiveGeneratedByContent(string $textHash, string $languageCode, string $voice): array;
+
+    public function countActiveInFolder(Uuid $folderId): int;
+
+    /**
+     * Inactive assets still pointing at the folder. They are invisible in the
+     * library, so deleting their folder moves them to the root instead of
+     * blocking the delete.
+     *
+     * @return list<AudioAsset>
+     */
+    public function findInactiveInFolder(Uuid $folderId): array;
 }

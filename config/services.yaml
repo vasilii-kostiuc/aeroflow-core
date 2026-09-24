@@ -133,6 +133,9 @@ services:
     App\AudioCatalog\Domain\Repository\AudioPromptRepositoryInterface:
         alias: App\AudioCatalog\Infrastructure\Persistence\Doctrine\AudioPromptRepository
 
+    App\AudioCatalog\Domain\Repository\AudioFolderRepositoryInterface:
+        alias: App\AudioCatalog\Infrastructure\Persistence\Doctrine\AudioFolderRepository
+
     App\AudioCatalog\Application\Storage\AudioAssetStorageInterface:
         alias: App\AudioCatalog\Infrastructure\Storage\LocalAudioAssetStorage
 

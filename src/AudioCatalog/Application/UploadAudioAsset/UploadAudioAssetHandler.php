@@ -6,6 +6,7 @@ namespace App\AudioCatalog\Application\UploadAudioAsset;
 
 use App\AudioCatalog\Application\AudioAssetResult;
 use App\AudioCatalog\Application\Support\AudioAssetPersister;
+use App\AudioCatalog\Application\Support\AudioFolderResolver;
 use App\AudioCatalog\Domain\Entity\AudioAsset;
 use App\AudioCatalog\Domain\Exception\InvalidAudioAssetUploadException;
 use App\AudioCatalog\Domain\ValueObject\AudioFormat;
@@ -21,6 +22,7 @@ final readonly class UploadAudioAssetHandler
 
     public function __construct(
         private AudioAssetPersister $persister,
+        private AudioFolderResolver $folders,
         private DomainEventPublisher $events,
     ) {
     }
@@ -42,6 +44,9 @@ final readonly class UploadAudioAssetHandler
             throw InvalidAudioAssetUploadException::invalidName();
         }
 
+        $folderId = $this->folders->resolveId($command->folderId);
+        $title = null !== $command->title && '' !== trim($command->title) ? $command->title : null;
+
         $detectedMimeType = new finfo(FILEINFO_MIME_TYPE)->file($command->temporaryPath);
         $format = is_string($detectedMimeType) ? AudioFormat::tryFromMimeType($detectedMimeType) : null;
         if (null === $format) {
@@ -57,6 +62,8 @@ final readonly class UploadAudioAssetHandler
                 $storageKey,
                 $format->mimeType,
                 $command->sizeBytes,
+                $title,
+                $folderId,
             ),
         );
 

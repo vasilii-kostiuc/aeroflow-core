@@ -7,6 +7,7 @@ namespace App\AudioCatalog\Application\GenerateAudioAsset;
 use App\AudioCatalog\Application\AudioAssetResult;
 use App\AudioCatalog\Application\Port\Tts\TextToSpeechPort;
 use App\AudioCatalog\Application\Support\AudioAssetPersister;
+use App\AudioCatalog\Application\Support\AudioFolderResolver;
 use App\AudioCatalog\Domain\Entity\AudioAsset;
 use App\AudioCatalog\Domain\Repository\AudioAssetRepositoryInterface;
 use App\AudioCatalog\Domain\ValueObject\AudioFormat;
@@ -23,16 +24,23 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  * When only the model version differs, a fresh asset is generated and the stale
  * one is deactivated (not deleted), so existing announcements keep resolving.
  *
+ * A reused asset keeps its title and folder: the cache hit returns the asset as
+ * the admin left it. A new asset is titled with the synthesized text itself
+ * (task 031), because the file name is only a technical slug.
+ *
  * Generation is atomic: synthesis runs before anything is persisted, so a TTS
  * failure leaves no partial asset behind.
  */
 #[AsMessageHandler(bus: 'command.bus')]
 final readonly class GenerateAudioAssetHandler
 {
+    private const int TITLE_LENGTH = 120;
+
     public function __construct(
         private AudioAssetRepositoryInterface $repository,
         private AudioAssetPersister $persister,
         private TextToSpeechPort $tts,
+        private AudioFolderResolver $folders,
         private DomainEventPublisher $events,
     ) {
     }
@@ -43,6 +51,8 @@ final readonly class GenerateAudioAssetHandler
 
         $language = LanguageCode::fromString($command->languageCode);
         $languageCode = $language->toString();
+
+        $folderId = $this->folders->resolveId($command->folderId);
 
         $voiceRequest = null !== $command->voice ? trim($command->voice) : null;
         $voice = $this->tts->describeVoice($languageCode, '' === $voiceRequest ? null : $voiceRequest);
@@ -72,6 +82,8 @@ final readonly class GenerateAudioAssetHandler
                 $textHash,
                 $voice->voice,
                 $voice->modelVersion,
+                $this->buildTitle($text->value),
+                $folderId,
             ),
         );
 
@@ -85,6 +97,16 @@ final readonly class GenerateAudioAssetHandler
         $this->events->publish(...$asset->pullEvents());
 
         return AudioAssetResult::fromEntity($asset);
+    }
+
+    private function buildTitle(string $text): string
+    {
+        $title = trim((string) preg_replace('/\s+/u', ' ', $text));
+        if (mb_strlen($title) <= self::TITLE_LENGTH) {
+            return $title;
+        }
+
+        return rtrim(mb_substr($title, 0, self::TITLE_LENGTH - 1)).'…';
     }
 
     private function buildName(string $text, string $languageCode, string $extension): string

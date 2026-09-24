@@ -79,6 +79,9 @@ services:
     App\FlightOperations\Application\Dispatcher\DispatcherFlightOccurrenceQueryInterface:
         alias: App\FlightOperations\Infrastructure\Persistence\Doctrine\DbalDispatcherFlightOccurrenceQuery
 
+    App\FlightOperations\Application\OperationalDay\OperationalDayProviderInterface:
+        alias: App\FlightOperations\Infrastructure\OperationalDay\AirportOperationalDayProvider
+
     App\FlightOperations\Domain\Repository\AirportRepositoryInterface:
         alias: App\FlightOperations\Infrastructure\Persistence\Doctrine\AirportRepository
 

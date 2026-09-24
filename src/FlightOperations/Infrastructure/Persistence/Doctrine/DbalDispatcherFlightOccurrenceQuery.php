@@ -6,7 +6,9 @@ namespace App\FlightOperations\Infrastructure\Persistence\Doctrine;
 
 use App\FlightOperations\Application\Dispatcher\DispatcherFlightOccurrenceQueryInterface;
 use App\FlightOperations\Application\Dispatcher\DispatcherFlightOccurrenceResult;
+use App\FlightOperations\Domain\Enum\FlightOccurrenceStatus;
 use DateTimeImmutable;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 
 final readonly class DbalDispatcherFlightOccurrenceQuery implements DispatcherFlightOccurrenceQueryInterface
@@ -70,6 +72,37 @@ final readonly class DbalDispatcherFlightOccurrenceQuery implements DispatcherFl
             ->fetchAllAssociative();
 
         return array_map(fn (array $row): DispatcherFlightOccurrenceResult => $this->map($row, $announcementType), $rows);
+    }
+
+    public function board(DateTimeImmutable $operationalDate): array
+    {
+        // Candidates: every run of the day, plus the previous day's runs that are
+        // still in progress. DISTINCT ON keeps one per card; ordering by date first
+        // prefers the carried-over run, which must be finished before a new one.
+        $rows = $this->connection->executeQuery(
+            'SELECT * FROM ('
+            .' SELECT DISTINCT ON (o.flight_definition_id)'
+            .' o.id, o.flight_definition_id, o.flight_number_snapshot, o.direction,'
+            .' o.origin_airport_code_snapshot, o.destination_airport_code_snapshot,'
+            .' o.operational_date, o.status, f.active'
+            .' FROM flight_occurrence o'
+            .' INNER JOIN flight_definition f ON f.id = o.flight_definition_id'
+            .' WHERE o.operational_date = :today'
+            .' OR (o.operational_date = :previousDay AND o.status IN (:inProgress))'
+            .' ORDER BY o.flight_definition_id, o.operational_date ASC, o.sequence_number DESC'
+            .') current ORDER BY current.flight_number_snapshot ASC',
+            [
+                'today' => $operationalDate->format('Y-m-d'),
+                'previousDay' => $operationalDate->modify('-1 day')->format('Y-m-d'),
+                'inProgress' => array_map(
+                    static fn (FlightOccurrenceStatus $status): string => $status->value,
+                    FlightOccurrenceStatus::inProgress(),
+                ),
+            ],
+            ['inProgress' => ArrayParameterType::STRING],
+        )->fetchAllAssociative();
+
+        return array_map(fn (array $row): DispatcherFlightOccurrenceResult => $this->map($row, null), $rows);
     }
 
     /** @param array<string,mixed> $row */

@@ -232,6 +232,15 @@ final class FlightOccurrence extends AggregateRoot
         ], true);
     }
 
+    /**
+     * Whether this run has been started and not yet finished — it is still live
+     * even after its operational day has passed (task 027).
+     */
+    public function isInProgress(): bool
+    {
+        return in_array($this->status, FlightOccurrenceStatus::inProgress(), true);
+    }
+
     public function getId(): Uuid
     {
         return $this->id;

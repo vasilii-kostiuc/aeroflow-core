@@ -13,4 +13,17 @@ enum FlightOccurrenceStatus: string
     case ArrivalAnnounced = 'arrival_announced';
     case Completed = 'completed';
     case Cancelled = 'cancelled';
+
+    /**
+     * Statuses of a run that has been started but has not reached the final status
+     * of its lifecycle. Such a run outlives its operational day: a check-in opened
+     * before midnight is closed and boarded after it (task 027). An arrival has no
+     * intermediate status, and a scheduled run has not been acted upon yet.
+     *
+     * @return list<self>
+     */
+    public static function inProgress(): array
+    {
+        return [self::CheckInOpen, self::CheckInClosed];
+    }
 }

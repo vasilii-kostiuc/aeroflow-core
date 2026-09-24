@@ -5,15 +5,16 @@ declare(strict_types=1);
 namespace App\FlightOperations\Application\EnsureManualFlightOccurrence;
 
 use App\FlightOperations\Application\FlightOccurrenceResult;
+use App\FlightOperations\Application\OperationalDay\OperationalDayProviderInterface;
 use App\FlightOperations\Domain\Entity\FlightOccurrence;
 use App\FlightOperations\Domain\Enum\FlightOccurrenceSource;
 use App\FlightOperations\Domain\Exception\FlightDefinitionNotFoundException;
+use App\FlightOperations\Domain\Exception\FlightOccurrenceTransitionConflictException;
 use App\FlightOperations\Domain\Exception\InvalidFlightOccurrenceTransitionException;
 use App\FlightOperations\Domain\Repository\FlightDefinitionRepositoryInterface;
 use App\FlightOperations\Domain\Repository\FlightOccurrenceRepositoryInterface;
 use App\Shared\Application\Event\DomainEventPublisher;
 use App\Shared\Application\Uuid\UuidParser;
-use DateTimeImmutable;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
@@ -23,6 +24,10 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  * creates a new scheduled occurrence. Unlike CreateFlightOccurrence it does not
  * fail on a duplicate business key, so the dispatcher can ensure an occurrence
  * exists before launching the first announcement of the day.
+ *
+ * The operational date is today's operational day of the airport (task 027). A new
+ * run is not created while the card still has a run started on the previous day
+ * and not yet finished — a card never has two live runs.
  */
 #[AsMessageHandler(bus: 'command.bus')]
 final readonly class EnsureManualFlightOccurrenceHandler
@@ -30,6 +35,7 @@ final readonly class EnsureManualFlightOccurrenceHandler
     public function __construct(
         private FlightDefinitionRepositoryInterface $flightDefinitions,
         private FlightOccurrenceRepositoryInterface $occurrences,
+        private OperationalDayProviderInterface $operationalDay,
         private DomainEventPublisher $events,
     ) {
     }
@@ -44,7 +50,7 @@ final readonly class EnsureManualFlightOccurrenceHandler
             throw InvalidFlightOccurrenceTransitionException::forAction('create', 'inactive_flight_definition');
         }
 
-        $operationalDate = $this->parseOperationalDate($command->operationalDate);
+        $operationalDate = $this->operationalDay->today();
 
         $existing = $this->occurrences->findOneByBusinessKey(
             $flightDefinitionId,
@@ -56,20 +62,15 @@ final readonly class EnsureManualFlightOccurrenceHandler
             return FlightOccurrenceResult::fromEntity($existing);
         }
 
+        $carriedOver = $this->occurrences->findLatestManualForUpdate($flightDefinitionId, $operationalDate->modify('-1 day'));
+        if ($carriedOver !== null && $carriedOver->isInProgress()) {
+            throw FlightOccurrenceTransitionConflictException::previousManualRunNotFinished($carriedOver->getStatus()->value);
+        }
+
         $occurrence = FlightOccurrence::create($flightDefinition, FlightOccurrenceSource::Manual, $operationalDate, $command->sequenceNumber);
         $this->occurrences->save($occurrence);
         $this->events->publish(...$occurrence->pullEvents());
 
         return FlightOccurrenceResult::fromEntity($occurrence);
-    }
-
-    private function parseOperationalDate(string $date): DateTimeImmutable
-    {
-        $parsed = DateTimeImmutable::createFromFormat('!Y-m-d', $date);
-        if (!$parsed instanceof DateTimeImmutable || $parsed->format('Y-m-d') !== $date) {
-            throw InvalidFlightOccurrenceTransitionException::forAction('create', 'invalid_operational_date');
-        }
-
-        return $parsed;
     }
 }

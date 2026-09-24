@@ -7,9 +7,13 @@ namespace App\FlightOperations\Api\Request;
 use OpenApi\Attributes as OA;
 use Symfony\Component\Validator\Constraints as Assert;
 
+/**
+ * No operational date: the server takes today's operational day of the airport
+ * (task 027); a stray `operationalDate` in the body is ignored.
+ */
 #[OA\Schema(
     schema: 'EnsureManualFlightOccurrenceRequest',
-    required: ['flightDefinitionId', 'operationalDate'],
+    required: ['flightDefinitionId'],
 )]
 final readonly class EnsureManualFlightOccurrenceRequest
 {
@@ -17,9 +21,6 @@ final readonly class EnsureManualFlightOccurrenceRequest
         #[OA\Property(format: 'uuid')]
         #[Assert\Uuid]
         public string $flightDefinitionId,
-        #[OA\Property(format: 'date', example: '2026-06-25')]
-        #[Assert\Date]
-        public string $operationalDate,
         #[OA\Property(minimum: 1, example: 1)]
         #[Assert\Positive]
         public int $sequenceNumber = 1,

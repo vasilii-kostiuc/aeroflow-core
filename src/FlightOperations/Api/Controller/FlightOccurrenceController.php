@@ -74,12 +74,12 @@ final class FlightOccurrenceController
         ),
     )]
     #[OA\Response(response: 404, description: 'Flight definition not found')]
+    #[OA\Response(response: 409, description: 'A run started on the previous operational day is not finished yet')]
     #[OA\Response(response: 422, description: 'Validation or inactive flight definition')]
     public function ensureManual(#[MapRequestPayload] EnsureManualFlightOccurrenceRequest $request): JsonResponse
     {
         return ApiResponse::success($this->bus->handleAs(new EnsureManualFlightOccurrenceCommand(
             flightDefinitionId: $request->flightDefinitionId,
-            operationalDate: $request->operationalDate,
             sequenceNumber: $request->sequenceNumber,
         ), FlightOccurrenceResult::class));
     }
@@ -103,7 +103,6 @@ final class FlightOccurrenceController
     {
         return ApiResponse::created($this->bus->handleAs(new StartNextManualFlightOccurrenceCommand(
             flightDefinitionId: $request->flightDefinitionId,
-            operationalDate: $request->operationalDate,
         ), FlightOccurrenceResult::class));
     }
 

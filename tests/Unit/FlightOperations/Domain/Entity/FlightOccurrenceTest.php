@@ -65,6 +65,39 @@ final class FlightOccurrenceTest extends TestCase
         $occurrence->closeCheckIn(Uuid::v7()->toRfc4122());
     }
 
+    public function testIsInProgressOnlyBetweenOpeningCheckInAndBoarding(): void
+    {
+        $occurrence = FlightOccurrence::createManual($this->departureDefinition(), new DateTimeImmutable('2026-06-25'));
+        $announcementId = Uuid::v7()->toRfc4122();
+        self::assertFalse($occurrence->isInProgress());
+
+        $occurrence->openCheckIn($announcementId, [['id' => Uuid::v7()->toRfc4122(), 'code' => '1']]);
+        self::assertTrue($occurrence->isInProgress());
+
+        $occurrence->closeCheckIn($announcementId);
+        self::assertTrue($occurrence->isInProgress());
+
+        $occurrence->startBoarding($announcementId, ['id' => Uuid::v7()->toRfc4122(), 'code' => 'A5']);
+        self::assertFalse($occurrence->isInProgress());
+    }
+
+    public function testArrivalIsNeverInProgress(): void
+    {
+        $occurrence = FlightOccurrence::createManual(
+            FlightDefinition::create(
+                FlightNumber::fromString('5F124'),
+                FlightDirection::Arrival,
+                AirportCode::fromString('FCO'),
+                AirportCode::fromString('KIV'),
+            ),
+            new DateTimeImmutable('2026-06-25'),
+        );
+        self::assertFalse($occurrence->isInProgress());
+
+        $occurrence->announceArrival(Uuid::v7()->toRfc4122());
+        self::assertFalse($occurrence->isInProgress());
+    }
+
     private function departureDefinition(): FlightDefinition
     {
         return FlightDefinition::create(

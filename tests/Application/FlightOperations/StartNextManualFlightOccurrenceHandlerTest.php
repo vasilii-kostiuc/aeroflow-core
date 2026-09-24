@@ -15,6 +15,7 @@ use App\FlightOperations\Domain\Exception\FlightOccurrenceTransitionConflictExce
 use App\FlightOperations\Domain\Exception\InvalidFlightOccurrenceTransitionException;
 use App\FlightOperations\Domain\ValueObject\AirportCode;
 use App\FlightOperations\Domain\ValueObject\FlightNumber;
+use App\Tests\Application\FlightOperations\Support\FixedOperationalDayProvider;
 use App\Tests\Application\FlightOperations\Support\InMemoryFlightDefinitionRepository;
 use App\Tests\Application\FlightOperations\Support\InMemoryFlightOccurrenceRepository;
 use App\Tests\Support\RecordingEventPublisher;
@@ -35,9 +36,9 @@ final class StartNextManualFlightOccurrenceHandlerTest extends TestCase
         $occurrences = new InMemoryFlightOccurrenceRepository();
         $occurrences->add($this->boardingOccurrence($definition));
         $events = new RecordingEventPublisher();
-        $handler = new StartNextManualFlightOccurrenceHandler($definitions, $occurrences, $events);
+        $handler = new StartNextManualFlightOccurrenceHandler($definitions, $occurrences, new FixedOperationalDayProvider(self::DATE), $events);
 
-        $result = $handler(new StartNextManualFlightOccurrenceCommand($definition->getId()->toRfc4122(), self::DATE));
+        $result = $handler(new StartNextManualFlightOccurrenceCommand($definition->getId()->toRfc4122()));
 
         self::assertSame(2, $result->sequenceNumber);
         self::assertSame('scheduled', $result->status);
@@ -55,9 +56,9 @@ final class StartNextManualFlightOccurrenceHandlerTest extends TestCase
         $arrival = FlightOccurrence::createManual($definition, new DateTimeImmutable(self::DATE));
         $arrival->announceArrival(Uuid::v4()->toRfc4122());
         $occurrences->add($arrival);
-        $handler = new StartNextManualFlightOccurrenceHandler($definitions, $occurrences, new RecordingEventPublisher());
+        $handler = new StartNextManualFlightOccurrenceHandler($definitions, $occurrences, new FixedOperationalDayProvider(self::DATE), new RecordingEventPublisher());
 
-        $result = $handler(new StartNextManualFlightOccurrenceCommand($definition->getId()->toRfc4122(), self::DATE));
+        $result = $handler(new StartNextManualFlightOccurrenceCommand($definition->getId()->toRfc4122()));
 
         self::assertSame(2, $result->sequenceNumber);
         self::assertSame('scheduled', $result->status);
@@ -73,12 +74,12 @@ final class StartNextManualFlightOccurrenceHandlerTest extends TestCase
         $open = FlightOccurrence::createManual($definition, new DateTimeImmutable(self::DATE));
         $open->openCheckIn(Uuid::v4()->toRfc4122(), [['id' => Uuid::v4()->toRfc4122(), 'code' => 'A1']]);
         $occurrences->add($open);
-        $handler = new StartNextManualFlightOccurrenceHandler($definitions, $occurrences, new RecordingEventPublisher());
+        $handler = new StartNextManualFlightOccurrenceHandler($definitions, $occurrences, new FixedOperationalDayProvider(self::DATE), new RecordingEventPublisher());
 
         $this->expectException(FlightOccurrenceTransitionConflictException::class);
 
         try {
-            $handler(new StartNextManualFlightOccurrenceCommand($definition->getId()->toRfc4122(), self::DATE));
+            $handler(new StartNextManualFlightOccurrenceCommand($definition->getId()->toRfc4122()));
         } finally {
             self::assertSame(0, $occurrences->saveCalls);
         }
@@ -92,12 +93,13 @@ final class StartNextManualFlightOccurrenceHandlerTest extends TestCase
         $handler = new StartNextManualFlightOccurrenceHandler(
             $definitions,
             new InMemoryFlightOccurrenceRepository(),
+            new FixedOperationalDayProvider(self::DATE),
             new RecordingEventPublisher(),
         );
 
         $this->expectException(FlightOccurrenceTransitionConflictException::class);
 
-        $handler(new StartNextManualFlightOccurrenceCommand($definition->getId()->toRfc4122(), self::DATE));
+        $handler(new StartNextManualFlightOccurrenceCommand($definition->getId()->toRfc4122()));
     }
 
     public function testRejectsUnknownFlightDefinition(): void
@@ -105,12 +107,13 @@ final class StartNextManualFlightOccurrenceHandlerTest extends TestCase
         $handler = new StartNextManualFlightOccurrenceHandler(
             new InMemoryFlightDefinitionRepository(),
             new InMemoryFlightOccurrenceRepository(),
+            new FixedOperationalDayProvider(self::DATE),
             new RecordingEventPublisher(),
         );
 
         $this->expectException(FlightDefinitionNotFoundException::class);
 
-        $handler(new StartNextManualFlightOccurrenceCommand(Uuid::v4()->toRfc4122(), self::DATE));
+        $handler(new StartNextManualFlightOccurrenceCommand(Uuid::v4()->toRfc4122()));
     }
 
     public function testRejectsInactiveFlightDefinition(): void
@@ -122,12 +125,13 @@ final class StartNextManualFlightOccurrenceHandlerTest extends TestCase
         $handler = new StartNextManualFlightOccurrenceHandler(
             $definitions,
             new InMemoryFlightOccurrenceRepository(),
+            new FixedOperationalDayProvider(self::DATE),
             new RecordingEventPublisher(),
         );
 
         $this->expectException(InvalidFlightOccurrenceTransitionException::class);
 
-        $handler(new StartNextManualFlightOccurrenceCommand($definition->getId()->toRfc4122(), self::DATE));
+        $handler(new StartNextManualFlightOccurrenceCommand($definition->getId()->toRfc4122()));
     }
 
     private function boardingOccurrence(FlightDefinition $definition): FlightOccurrence

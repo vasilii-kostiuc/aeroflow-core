@@ -50,7 +50,6 @@ final class FlightOccurrenceApiTest extends WebTestCase
 
         $this->json($client, 'POST', '/api/v1/flight-occurrences:ensure-manual', [
             'flightDefinitionId' => $flightId,
-            'operationalDate' => '2026-06-25',
         ]);
         self::assertResponseIsSuccessful();
         $first = $this->response($client)['data'];
@@ -59,12 +58,38 @@ final class FlightOccurrenceApiTest extends WebTestCase
 
         $this->json($client, 'POST', '/api/v1/flight-occurrences:ensure-manual', [
             'flightDefinitionId' => $flightId,
-            'operationalDate' => '2026-06-25',
         ]);
         self::assertResponseIsSuccessful();
         $second = $this->response($client)['data'];
 
         self::assertSame($first['id'], $second['id']);
+    }
+
+    public function testEnsureManualUsesServerOperationalDayAndBoardShowsIt(): void
+    {
+        $client = static::createClient();
+        $this->authenticate($client);
+        $flightId = $this->createFlightDefinition($client);
+
+        // A client-supplied date is ignored: the server decides the operational day.
+        $this->json($client, 'POST', '/api/v1/flight-occurrences:ensure-manual', [
+            'flightDefinitionId' => $flightId,
+            'operationalDate' => '1999-01-01',
+        ]);
+        self::assertResponseIsSuccessful();
+        $occurrence = $this->response($client)['data'];
+
+        $client->request('GET', '/api/v1/dispatcher/board');
+        self::assertResponseIsSuccessful();
+        $board = $this->response($client)['data'];
+
+        self::assertSame($board['operationalDate'], $occurrence['operationalDate']);
+        $rows = array_values(array_filter(
+            $board['occurrences'],
+            static fn (array $row): bool => $row['flightDefinitionId'] === $flightId,
+        ));
+        self::assertCount(1, $rows);
+        self::assertSame($occurrence['id'], $rows[0]['id']);
     }
 
     public function testStartNextManualRejectsWhenNoPreviousRun(): void
@@ -75,7 +100,6 @@ final class FlightOccurrenceApiTest extends WebTestCase
 
         $this->json($client, 'POST', '/api/v1/flight-occurrences:start-next-manual', [
             'flightDefinitionId' => $flightId,
-            'operationalDate' => '2026-06-25',
         ]);
 
         self::assertResponseStatusCodeSame(409);
@@ -90,13 +114,11 @@ final class FlightOccurrenceApiTest extends WebTestCase
         // First run exists but is only "scheduled" (its lifecycle is not finished).
         $this->json($client, 'POST', '/api/v1/flight-occurrences:ensure-manual', [
             'flightDefinitionId' => $flightId,
-            'operationalDate' => '2026-06-25',
         ]);
         self::assertResponseIsSuccessful();
 
         $this->json($client, 'POST', '/api/v1/flight-occurrences:start-next-manual', [
             'flightDefinitionId' => $flightId,
-            'operationalDate' => '2026-06-25',
         ]);
 
         self::assertResponseStatusCodeSame(409);

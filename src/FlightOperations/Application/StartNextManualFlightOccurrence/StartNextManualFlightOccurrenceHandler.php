@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\FlightOperations\Application\StartNextManualFlightOccurrence;
 
 use App\FlightOperations\Application\FlightOccurrenceResult;
+use App\FlightOperations\Application\OperationalDay\OperationalDayProviderInterface;
 use App\FlightOperations\Domain\Entity\FlightOccurrence;
 use App\FlightOperations\Domain\Exception\FlightDefinitionNotFoundException;
 use App\FlightOperations\Domain\Exception\FlightOccurrenceTransitionConflictException;
@@ -13,7 +14,6 @@ use App\FlightOperations\Domain\Repository\FlightDefinitionRepositoryInterface;
 use App\FlightOperations\Domain\Repository\FlightOccurrenceRepositoryInterface;
 use App\Shared\Application\Event\DomainEventPublisher;
 use App\Shared\Application\Uuid\UuidParser;
-use DateTimeImmutable;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
@@ -26,6 +26,8 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  * latest run has reached the final status of its lifecycle. The latest run is read
  * for update so concurrent commands cannot allocate the same sequence number, and
  * the business-key unique index is the last line of defence.
+ *
+ * The run belongs to today's operational day of the airport (task 027).
  */
 #[AsMessageHandler(bus: 'command.bus')]
 final readonly class StartNextManualFlightOccurrenceHandler
@@ -33,6 +35,7 @@ final readonly class StartNextManualFlightOccurrenceHandler
     public function __construct(
         private FlightDefinitionRepositoryInterface $flightDefinitions,
         private FlightOccurrenceRepositoryInterface $occurrences,
+        private OperationalDayProviderInterface $operationalDay,
         private DomainEventPublisher $events,
     ) {
     }
@@ -47,7 +50,7 @@ final readonly class StartNextManualFlightOccurrenceHandler
             throw InvalidFlightOccurrenceTransitionException::forAction('create', 'inactive_flight_definition');
         }
 
-        $operationalDate = $this->parseOperationalDate($command->operationalDate);
+        $operationalDate = $this->operationalDay->today();
 
         $latest = $this->occurrences->findLatestManualForUpdate($flightDefinitionId, $operationalDate);
         if ($latest === null) {
@@ -66,15 +69,5 @@ final readonly class StartNextManualFlightOccurrenceHandler
         $this->events->publish(...$occurrence->pullEvents());
 
         return FlightOccurrenceResult::fromEntity($occurrence);
-    }
-
-    private function parseOperationalDate(string $date): DateTimeImmutable
-    {
-        $parsed = DateTimeImmutable::createFromFormat('!Y-m-d', $date);
-        if (!$parsed instanceof DateTimeImmutable || $parsed->format('Y-m-d') !== $date) {
-            throw InvalidFlightOccurrenceTransitionException::forAction('create', 'invalid_operational_date');
-        }
-
-        return $parsed;
     }
 }

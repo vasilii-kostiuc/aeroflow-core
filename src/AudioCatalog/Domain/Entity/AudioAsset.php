@@ -26,6 +26,7 @@ use Symfony\Component\Uid\Uuid;
 final class AudioAsset extends AggregateRoot
 {
     public const int MAX_TITLE_LENGTH = 255;
+    public const int TEXT_TITLE_LENGTH = 120;
 
     #[ORM\Id]
     #[ORM\Column(type: UuidType::NAME, unique: true)]
@@ -218,6 +219,20 @@ final class AudioAsset extends AggregateRoot
         $title = trim((string) preg_replace('/[\s_-]+/u', ' ', $base));
 
         return mb_substr('' === $title ? $name : $title, 0, self::MAX_TITLE_LENGTH);
+    }
+
+    /**
+     * Default title for speech synthesized from text: the text itself, whitespace
+     * collapsed, cut to {@see TEXT_TITLE_LENGTH} characters with an ellipsis.
+     */
+    public static function titleFromText(string $text): string
+    {
+        $title = trim((string) preg_replace('/\s+/u', ' ', $text));
+        if (mb_strlen($title) <= self::TEXT_TITLE_LENGTH) {
+            return $title;
+        }
+
+        return rtrim(mb_substr($title, 0, self::TEXT_TITLE_LENGTH - 1)).'…';
     }
 
     /**

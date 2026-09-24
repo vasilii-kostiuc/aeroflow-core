@@ -8,6 +8,7 @@ use App\Announcements\Domain\Exception\AnnouncementNotFoundException;
 use App\Announcements\Domain\Exception\AnnouncementVariantNotFoundException;
 use App\Announcements\Domain\Exception\AudioAssetUnavailableException;
 use App\Announcements\Domain\Exception\DuplicateFlightAnnouncementConfigException;
+use App\Announcements\Domain\Exception\EmergencyTemplateNotFoundException;
 use App\Announcements\Domain\Exception\FlightAnnouncementConfigNotFoundException;
 use App\Announcements\Domain\Exception\FlightDefinitionNotFoundException as AnnouncementFlightDefinitionNotFoundException;
 use App\Announcements\Domain\Exception\SupplementaryTemplateNotFoundException;
@@ -50,6 +51,7 @@ final class DomainExceptionHttpStatusMapper
         AnnouncementNotFoundException::class => Response::HTTP_NOT_FOUND,
         AnnouncementFlightDefinitionNotFoundException::class => Response::HTTP_NOT_FOUND,
         SupplementaryTemplateNotFoundException::class => Response::HTTP_NOT_FOUND,
+        EmergencyTemplateNotFoundException::class => Response::HTTP_NOT_FOUND,
         DuplicateFlightAnnouncementConfigException::class => Response::HTTP_CONFLICT,
         FlightAnnouncementConfigNotFoundException::class => Response::HTTP_NOT_FOUND,
         AnnouncementVariantNotFoundException::class => Response::HTTP_NOT_FOUND,

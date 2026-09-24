@@ -30,8 +30,8 @@ final class Announcement extends AggregateRoot
     private Uuid $id;
     #[ORM\Column(length: 32, enumType: AnnouncementType::class)]
     private AnnouncementType $type;
-    // Null for the airport-wide supplementary announcement (task 024); the five
-    // flight types always carry a definition.
+    // Null for the airport-wide supplementary (task 024) and emergency (task 026)
+    // announcements; the five flight types always carry a definition.
     #[ORM\Column(type: UuidType::NAME, nullable: true)]
     private ?Uuid $flightDefinitionId;
     #[ORM\Column(type: UuidType::NAME, nullable: true)]
@@ -92,7 +92,8 @@ final class Announcement extends AggregateRoot
                 throw InvalidFlightDefinitionIdException::forValue($flightDefinitionId);
             }
         } elseif ($flightDefinitionId !== null) {
-            // Supplementary is airport-wide: a flight definition here is a modelling error.
+            // Supplementary and emergency are airport-wide: a flight definition here
+            // is a modelling error.
             throw InvalidAnnouncementResourcesException::unexpectedFlightDefinition();
         }
         if ($flightOccurrenceId !== null && !Uuid::isValid($flightOccurrenceId)) {

@@ -41,6 +41,12 @@ framework:
                 retry_strategy:
                     max_retries: 3
                     delay: 1000
+            # Control-plane commands that must never queue behind the bulk of
+            # ordinary playback requests: emergency mode activation/deactivation
+            # (ADR 002, level 2 — its own queue, its own DSN).
+            emergency_commands:
+                dsn: '%env(MESSENGER_EMERGENCY_COMMANDS_DSN)%'
+                serializer: messenger.transport.symfony_serializer
             # failed: 'doctrine://default?queue_name=failed'
             sync: 'sync://'
 
@@ -50,6 +56,8 @@ framework:
             App\Announcements\Application\Playback\CancelAnnouncementPlayback: async
             App\Announcements\Application\Playback\StopAnnouncementPlayback: async
             App\Announcements\Application\Playback\StopAnnouncementRepeat: async
+            App\Announcements\Application\Playback\ActivateEmergencyMode: emergency_commands
+            App\Announcements\Application\Playback\DeactivateEmergencyMode: emergency_commands
 
 when@test:
     framework:
@@ -58,4 +66,5 @@ when@test:
                 # Keep the outbound transport in-memory in tests so publishing can be
                 # asserted without a running RabbitMQ.
                 async: 'in-memory://'
+                emergency_commands: 'in-memory://'
                 playback_events: 'in-memory://'

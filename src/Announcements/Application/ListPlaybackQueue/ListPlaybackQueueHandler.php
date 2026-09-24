@@ -17,7 +17,7 @@ use Symfony\Component\Uid\Uuid;
  *
  * Playback stays the source of truth for the actual order; this is an eventual
  * read model derived from the Queued/Started/Completed/Failed/Cancelled/Interrupted
- * /Rescheduled receipts, enriched with announcement details. No aggregate is loaded
+ * /Rescheduled/Preempted receipts, enriched with announcement details. No aggregate is loaded
  * for writing and no playback tables are read — receipts belong to this context.
  *
  * The state of a row is decided by its **last** receipt, not by accumulating flags
@@ -88,7 +88,9 @@ final readonly class ListPlaybackQueueHandler
 
             match ($row->state) {
                 'playing' => $playing = $row,
-                'waiting' => $waiting[] = [$job['queuedAt'], $row],
+                // A preempted row (task 025/026) is not finished: playback requeued it
+                // at its original place, so it waits for the emergency to pass.
+                'waiting', 'preempted' => $waiting[] = [$job['queuedAt'], $row],
                 // A resting repeat series queues by the moment it will sound again,
                 // not by the moment its series was originally queued.
                 'rescheduled' => $waiting[] = [$this->parse($job['nextAt']) ?? $job['queuedAt'], $row],
@@ -96,8 +98,9 @@ final readonly class ListPlaybackQueueHandler
             };
         }
 
-        // All current announcements share one priority (flight = 100), so queue
-        // order approximates to FIFO by the moment the row became due.
+        // Announcement priorities differ (emergency 1000 > flight 100 > supplementary
+        // 50), but playback owns the real order; this eventual view approximates it as
+        // FIFO by the moment each row became due.
         usort($waiting, static fn (array $a, array $b): int => $a[0] <=> $b[0]);
         usort($recent, static fn (array $a, array $b): int => $b[0] <=> $a[0]);
 
@@ -132,6 +135,7 @@ final readonly class ListPlaybackQueueHandler
             'announcement_playback.interrupted' => 'interrupted',
             'announcement_playback.started' => 'playing',
             'announcement_playback.rescheduled' => 'rescheduled',
+            'announcement_playback.preempted' => 'preempted',
             default => 'waiting',
         };
 

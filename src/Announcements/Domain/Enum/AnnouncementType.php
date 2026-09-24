@@ -16,6 +16,12 @@ enum AnnouncementType: string
      * The first non-flight announcement path; carries no counters, gate or flight.
      */
     case Supplementary = 'supplementary';
+    /**
+     * Airport-wide emergency announcement (task 026). Like Supplementary it carries
+     * no flight; unlike it, launching one also activates emergency mode, so the
+     * ordinary queue is suspended until the dispatcher lifts it.
+     */
+    case Emergency = 'emergency';
 
     public function requiresCheckInCounters(): bool
     {
@@ -37,21 +43,24 @@ enum AnnouncementType: string
 
     /**
      * Whether this type belongs to a flight. The five flight types carry a
-     * FlightDefinition; the airport-wide supplementary announcement does not.
+     * FlightDefinition; the airport-wide supplementary and emergency announcements
+     * do not.
      */
     public function requiresFlight(): bool
     {
-        return self::Supplementary !== $this;
+        return self::Supplementary !== $this && self::Emergency !== $this;
     }
 
     /**
      * Playback priority derived from the type (see "Приоритеты воспроизведения" in
-     * README.md): flight announcements play at 100, supplementary at 50 (behind
-     * flight announcements, ahead of background music).
+     * README.md): an emergency announcement plays at 1000 — the reserved preemptive
+     * threshold of playback — flight announcements at 100, supplementary at 50
+     * (behind flight announcements, ahead of background music).
      */
     public function playbackPriority(): int
     {
         return match ($this) {
+            self::Emergency => 1000,
             self::Supplementary => 50,
             default => 100,
         };

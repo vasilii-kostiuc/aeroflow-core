@@ -34,8 +34,6 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 #[AsMessageHandler(bus: 'command.bus')]
 final readonly class GenerateAudioAssetHandler
 {
-    private const int TITLE_LENGTH = 120;
-
     public function __construct(
         private AudioAssetRepositoryInterface $repository,
         private AudioAssetPersister $persister,
@@ -82,7 +80,7 @@ final readonly class GenerateAudioAssetHandler
                 $textHash,
                 $voice->voice,
                 $voice->modelVersion,
-                $this->buildTitle($text->value),
+                AudioAsset::titleFromText($text->value),
                 $folderId,
             ),
         );
@@ -97,16 +95,6 @@ final readonly class GenerateAudioAssetHandler
         $this->events->publish(...$asset->pullEvents());
 
         return AudioAssetResult::fromEntity($asset);
-    }
-
-    private function buildTitle(string $text): string
-    {
-        $title = trim((string) preg_replace('/\s+/u', ' ', $text));
-        if (mb_strlen($title) <= self::TITLE_LENGTH) {
-            return $title;
-        }
-
-        return rtrim(mb_substr($title, 0, self::TITLE_LENGTH - 1)).'…';
     }
 
     private function buildName(string $text, string $languageCode, string $extension): string

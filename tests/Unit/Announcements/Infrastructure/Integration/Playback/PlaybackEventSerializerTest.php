@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Announcements\Infrastructure\Integration\Playback;
 
+use App\Announcements\Application\Playback\EmergencyModeIntegrationEvent;
 use App\Announcements\Application\Playback\PlaybackIntegrationEvent;
 use App\Announcements\Infrastructure\Integration\Playback\PlaybackEventSerializer;
 use PHPUnit\Framework\TestCase;
@@ -101,6 +102,52 @@ final class PlaybackEventSerializerTest extends TestCase
         $message = $serializer->decode($encoded)->getMessage();
         self::assertInstanceOf(PlaybackIntegrationEvent::class, $message);
         self::assertSame('2026-07-23T09:20:30+00:00', $message->nextAt);
+    }
+
+    /**
+     * The emergency mode reports (task 026) share the queue but carry no job: they
+     * must decode without announcementId/jobId.
+     */
+    public function testDecodesEmergencyModeReport(): void
+    {
+        $messageId = Uuid::v7()->toRfc4122();
+
+        $envelope = new PlaybackEventSerializer()->decode(['body' => json_encode([
+            'event' => 'emergency_mode.activated',
+            'messageId' => $messageId,
+            'occurredAt' => '2026-09-23T10:00:00+00:00',
+            'schemaVersion' => 1,
+        ], JSON_THROW_ON_ERROR)]);
+
+        $message = $envelope->getMessage();
+        self::assertInstanceOf(EmergencyModeIntegrationEvent::class, $message);
+        self::assertTrue($message->isActive());
+        self::assertSame($messageId, $message->messageId);
+        self::assertSame('2026-09-23T10:00:00+00:00', $message->occurredAt);
+    }
+
+    public function testDecodesEmergencyModeDeactivationReport(): void
+    {
+        $envelope = new PlaybackEventSerializer()->decode(['body' => json_encode([
+            'event' => 'emergency_mode.deactivated',
+            'messageId' => Uuid::v7()->toRfc4122(),
+            'occurredAt' => '2026-09-23T10:30:00+00:00',
+            'schemaVersion' => 1,
+        ], JSON_THROW_ON_ERROR)]);
+
+        $message = $envelope->getMessage();
+        self::assertInstanceOf(EmergencyModeIntegrationEvent::class, $message);
+        self::assertFalse($message->isActive());
+    }
+
+    public function testRejectsUnknownEmergencyModeEvent(): void
+    {
+        $this->expectException(MessageDecodingFailedException::class);
+
+        new PlaybackEventSerializer()->decode(['body' => json_encode([
+            'event' => 'emergency_mode.exploded',
+            'messageId' => Uuid::v7()->toRfc4122(),
+        ], JSON_THROW_ON_ERROR)]);
     }
 
     public function testRejectsBodyWithoutEventDiscriminator(): void

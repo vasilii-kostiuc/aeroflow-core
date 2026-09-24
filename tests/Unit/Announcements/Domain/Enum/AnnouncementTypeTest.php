@@ -23,6 +23,19 @@ final class AnnouncementTypeTest extends TestCase
         }
     }
 
+    public function testEmergencyIsAirportWideAndPlaysAtThePreemptivePriority1000(): void
+    {
+        $type = AnnouncementType::Emergency;
+
+        self::assertFalse($type->requiresFlight());
+        self::assertFalse($type->requiresCheckInCounters());
+        self::assertFalse($type->requiresGate());
+        // The first slice has no automatic repeat while the mode lasts; the
+        // dispatcher relaunches the preset by hand if needed.
+        self::assertFalse($type->isRepeatable());
+        self::assertSame(1000, $type->playbackPriority());
+    }
+
     public function testSupplementaryIsAirportWideAndPlaysAtPriority50(): void
     {
         $type = AnnouncementType::Supplementary;

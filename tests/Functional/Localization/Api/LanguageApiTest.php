@@ -19,7 +19,7 @@ final class LanguageApiTest extends WebTestCase
 
         self::assertTrue($payload['success']);
         self::assertSame('ro-MD', $payload['data'][0]['code']);
-        self::assertSame('Romana', $payload['data'][0]['nativeName']);
+        self::assertSame('Română', $payload['data'][0]['nativeName']);
         self::assertTrue($payload['data'][0]['active']);
     }
 }

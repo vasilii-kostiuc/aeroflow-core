@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional\Announcements\Api;
 
+use App\Tests\Support\ActsAsUser;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 final class AnnouncementApiTest extends WebTestCase
 {
+    use ActsAsUser;
+
     public function testArrivalActionAdvancesOccurrenceAndCreatesAnnouncement(): void
     {
         $client = static::createClient();
@@ -228,13 +231,7 @@ final class AnnouncementApiTest extends WebTestCase
 
     private function authenticate(KernelBrowser $client): void
     {
-        $this->json($client, 'POST', '/api/v1/register', [
-            'email' => 'announcement-'.uniqid('', true).'@example.com',
-            'password' => 'password123',
-            'passwordConfirmation' => 'password123',
-        ]);
-        self::assertResponseStatusCodeSame(201);
-        $client->setServerParameter('HTTP_AUTHORIZATION', 'Bearer '.$this->response($client)['data']['accessToken']);
+        $this->actAs($client);
     }
 
     /** @param array<string,mixed> $payload */

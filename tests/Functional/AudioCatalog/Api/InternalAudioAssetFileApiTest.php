@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional\AudioCatalog\Api;
 
+use App\Tests\Support\ActsAsUser;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -15,6 +16,8 @@ use Symfony\Component\Uid\Uuid;
  */
 final class InternalAudioAssetFileApiTest extends WebTestCase
 {
+    use ActsAsUser;
+
     public function testStreamsActiveAssetFileWithoutAuthentication(): void
     {
         $client = static::createClient();
@@ -72,23 +75,7 @@ final class InternalAudioAssetFileApiTest extends WebTestCase
 
     private function authenticate(KernelBrowser $client): void
     {
-        $client->request(
-            'POST',
-            '/api/v1/register',
-            [],
-            [],
-            ['CONTENT_TYPE' => 'application/json'],
-            json_encode([
-                'email' => 'agent-download-'.uniqid('', true).'@example.com',
-                'password' => 'password123',
-                'passwordConfirmation' => 'password123',
-            ], JSON_THROW_ON_ERROR),
-        );
-        self::assertResponseStatusCodeSame(201);
-        $client->setServerParameter(
-            'HTTP_AUTHORIZATION',
-            'Bearer '.$this->response($client)['data']['accessToken'],
-        );
+        $this->actAs($client);
     }
 
     /**

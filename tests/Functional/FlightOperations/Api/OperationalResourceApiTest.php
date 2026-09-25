@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional\FlightOperations\Api;
 
+use App\Tests\Support\ActsAsUser;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 final class OperationalResourceApiTest extends WebTestCase
 {
+    use ActsAsUser;
+
     public function testGateAndCheckInCounterHaveIndependentFlows(): void
     {
         $client = static::createClient();
@@ -71,16 +74,7 @@ final class OperationalResourceApiTest extends WebTestCase
 
     private function authenticate(KernelBrowser $client): void
     {
-        $this->jsonRequest($client, 'POST', '/api/v1/register', [
-            'email' => 'operational-resource-'.uniqid('', true).'@example.com',
-            'password' => 'password123',
-            'passwordConfirmation' => 'password123',
-        ]);
-        self::assertResponseStatusCodeSame(201);
-        $client->setServerParameter(
-            'HTTP_AUTHORIZATION',
-            'Bearer '.$this->jsonResponse($client)['data']['accessToken'],
-        );
+        $this->actAs($client);
     }
 
     /**

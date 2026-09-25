@@ -33,7 +33,9 @@ use App\FlightOperations\Domain\Exception\OperationalResourceNotFoundException;
 use App\Shared\Domain\DomainException;
 use App\UserAccess\Domain\Exception\InvalidCredentialsException;
 use App\UserAccess\Domain\Exception\InvalidRefreshTokenException;
+use App\UserAccess\Domain\Exception\LastAdministratorException;
 use App\UserAccess\Domain\Exception\UserAlreadyExistsException;
+use App\UserAccess\Domain\Exception\UserNotFoundException;
 use Symfony\Component\HttpFoundation\Response;
 
 final class DomainExceptionHttpStatusMapper
@@ -45,6 +47,8 @@ final class DomainExceptionHttpStatusMapper
         InvalidCredentialsException::class => Response::HTTP_UNAUTHORIZED,
         InvalidRefreshTokenException::class => Response::HTTP_UNAUTHORIZED,
         UserAlreadyExistsException::class => Response::HTTP_CONFLICT,
+        UserNotFoundException::class => Response::HTTP_NOT_FOUND,
+        LastAdministratorException::class => Response::HTTP_CONFLICT,
         DuplicateFlightDefinitionException::class => Response::HTTP_CONFLICT,
         DuplicateFlightOccurrenceException::class => Response::HTTP_CONFLICT,
         FlightOperationsFlightDefinitionNotFoundException::class => Response::HTTP_NOT_FOUND,

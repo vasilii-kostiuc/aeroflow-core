@@ -18,14 +18,29 @@ security:
             provider: app_jwt_provider
             jwt: ~
 
-    # Note: Only the *first* matching rule is applied
+    # Administrator can do everything a dispatcher can (task 033).
+    role_hierarchy:
+        ROLE_ADMIN: [ROLE_DISPATCHER]
+
+    # Only the *first* matching rule is applied. Order: public, then the
+    # dispatcher's work, then everything else under /api/v1 for administrators —
+    # so a new endpoint is closed to administrators by default, not open to all.
     access_control:
-        - { path: ^/api/v1/register$, roles: PUBLIC_ACCESS }
-        - { path: ^/api/v1/login$, roles: PUBLIC_ACCESS }
-        - { path: ^/api/v1/token/refresh$, roles: PUBLIC_ACCESS }
-        - { path: ^/api/v1/logout$, roles: PUBLIC_ACCESS }
-        - { path: ^/api/v1/languages$, roles: PUBLIC_ACCESS }
-        - { path: ^/api/v1, roles: IS_AUTHENTICATED_FULLY }
+        - { path: ^/api/v1/(login|token/refresh|logout|languages)$, roles: PUBLIC_ACCESS }
+        # Any signed-in account, a role or not: the web reads its current role here.
+        - { path: ^/api/v1/me$, roles: IS_AUTHENTICATED_FULLY }
+
+        # Dispatcher panel: board, queue, stop, supplementary and emergency announcements.
+        - { path: ^/api/v1/dispatcher/, roles: ROLE_DISPATCHER }
+        # Dispatcher actions on a flight run and on a queued announcement.
+        - { path: '^/api/v1/flight-occurrences:(ensure-manual|start-next-manual)$', roles: ROLE_DISPATCHER, methods: [POST] }
+        - { path: '^/api/v1/flight-occurrences/[^/]+/(check-in:open|check-in:close|boarding|arrival)$', roles: ROLE_DISPATCHER, methods: [POST] }
+        - { path: ^/api/v1/announcements/[^/]+/cancel$, roles: ROLE_DISPATCHER, methods: [POST] }
+        # Reference data the dispatcher panel reads.
+        - { path: ^/api/v1/(flight-definitions|airports|flight-occurrences|announcements)(/[^/]+)?$, roles: ROLE_DISPATCHER, methods: [GET] }
+        - { path: ^/api/v1/(admin/gates|admin/check-in-counters|flight-announcement-configs/languages)$, roles: ROLE_DISPATCHER, methods: [GET] }
+
+        - { path: ^/api/v1, roles: ROLE_ADMIN }
         # Service-to-service download for the audio agent (task 016). No
         # inter-service auth yet — network-level trust of the local installation,
         # a documented deliberate compromise.

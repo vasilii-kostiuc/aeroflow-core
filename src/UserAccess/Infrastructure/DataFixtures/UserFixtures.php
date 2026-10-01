@@ -6,6 +6,7 @@ namespace App\UserAccess\Infrastructure\DataFixtures;
 
 use App\UserAccess\Application\Security\PasswordHasherInterface;
 use App\UserAccess\Domain\Entity\User;
+use App\UserAccess\Domain\Enum\UserRole;
 use App\UserAccess\Domain\Repository\UserRepositoryInterface;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
@@ -15,10 +16,16 @@ final class UserFixtures extends Fixture implements FixtureGroupInterface
 {
     private const DEFAULT_PASSWORD = 'AeroFlow123!';
 
-    private const EMAILS = [
-        'admin@aeroflow.local',
-        'dispatcher@aeroflow.local',
-        'operator@aeroflow.local',
+    /**
+     * E-mail => role. The operator has no role on purpose: it shows the
+     * «Нет доступа» screen of an account that exists but is not admitted.
+     *
+     * @var array<string, UserRole|null>
+     */
+    private const USERS = [
+        'admin@aeroflow.local' => UserRole::Admin,
+        'dispatcher@aeroflow.local' => UserRole::Dispatcher,
+        'operator@aeroflow.local' => null,
     ];
 
     public function __construct(
@@ -31,12 +38,9 @@ final class UserFixtures extends Fixture implements FixtureGroupInterface
     {
         $passwordHash = $this->passwordHasher->hash(self::DEFAULT_PASSWORD);
 
-        foreach (self::EMAILS as $email) {
-            if ($this->userRepository->findByEmail($email) !== null) {
-                continue;
-            }
-
-            $user = User::register($email, $passwordHash);
+        foreach (self::USERS as $email => $role) {
+            $user = $this->userRepository->findByEmail($email) ?? User::register($email, $passwordHash);
+            $user->changeRole($role);
             $user->pullEvents();
 
             $manager->persist($user);

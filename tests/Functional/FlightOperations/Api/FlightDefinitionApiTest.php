@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional\FlightOperations\Api;
 
+use App\Tests\Support\ActsAsUser;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 final class FlightDefinitionApiTest extends WebTestCase
 {
+    use ActsAsUser;
+
     public function testEndpointsRequireAuthentication(): void
     {
         $client = static::createClient();
@@ -118,15 +121,7 @@ final class FlightDefinitionApiTest extends WebTestCase
 
     private function authenticate(KernelBrowser $client): void
     {
-        $email = 'flight-definition-'.uniqid('', true).'@example.com';
-        $this->jsonRequest($client, 'POST', '/api/v1/register', [
-            'email' => $email,
-            'password' => 'password123',
-            'passwordConfirmation' => 'password123',
-        ]);
-        self::assertResponseStatusCodeSame(201);
-        $token = $this->jsonResponse($client)['data']['accessToken'];
-        $client->setServerParameter('HTTP_AUTHORIZATION', 'Bearer '.$token);
+        $this->actAs($client);
     }
 
     /**

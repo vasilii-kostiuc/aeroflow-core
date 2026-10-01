@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\UserAccess\Infrastructure\Persistance\Doctrine;
 
 use App\UserAccess\Domain\Entity\RefreshToken;
+use App\UserAccess\Domain\Entity\User;
 use App\UserAccess\Domain\Repository\RefreshTokenRepositoryInterface;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -29,5 +30,12 @@ final readonly class RefreshTokenRepository implements RefreshTokenRepositoryInt
         }
 
         $this->em->flush();
+    }
+
+    public function findNotRevokedByUser(User $user): array
+    {
+        return $this->em
+            ->getRepository(RefreshToken::class)
+            ->findBy(['user' => $user, 'revokedAt' => null]);
     }
 }

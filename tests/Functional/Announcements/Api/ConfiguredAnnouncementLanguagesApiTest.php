@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional\Announcements\Api;
 
+use App\Tests\Support\ActsAsUser;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 final class ConfiguredAnnouncementLanguagesApiTest extends WebTestCase
 {
+    use ActsAsUser;
+
     public function testReturnsEnabledConfiguredLanguages(): void
     {
         $client = static::createClient();
@@ -79,16 +82,7 @@ final class ConfiguredAnnouncementLanguagesApiTest extends WebTestCase
 
     private function authenticate(KernelBrowser $client): void
     {
-        $this->json($client, 'POST', '/api/v1/register', [
-            'email' => 'config-languages-'.uniqid('', true).'@example.com',
-            'password' => 'password123',
-            'passwordConfirmation' => 'password123',
-        ]);
-        self::assertResponseStatusCodeSame(201);
-        $client->setServerParameter(
-            'HTTP_AUTHORIZATION',
-            'Bearer '.$this->response($client)['data']['accessToken'],
-        );
+        $this->actAs($client);
     }
 
     /**

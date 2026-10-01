@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional\AudioCatalog\Api;
 
+use App\Tests\Support\ActsAsUser;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -15,6 +16,8 @@ use Symfony\Component\Uid\Uuid;
  */
 final class AudioLibraryApiTest extends WebTestCase
 {
+    use ActsAsUser;
+
     private KernelBrowser $client;
 
     protected function setUp(): void
@@ -184,13 +187,7 @@ final class AudioLibraryApiTest extends WebTestCase
 
     private function authenticate(): void
     {
-        $this->json('POST', '/api/v1/register', [
-            'email' => 'audio-library-'.uniqid('', true).'@example.com',
-            'password' => 'password123',
-            'passwordConfirmation' => 'password123',
-        ]);
-        self::assertResponseStatusCodeSame(201);
-        $this->client->setServerParameter('HTTP_AUTHORIZATION', 'Bearer '.$this->data()['accessToken']);
+        $this->actAs($this->client);
     }
 
     /**

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Application\UserAccess\Support;
 
 use App\UserAccess\Domain\Entity\RefreshToken;
+use App\UserAccess\Domain\Entity\User;
 use App\UserAccess\Domain\Repository\RefreshTokenRepositoryInterface;
 
 final class InMemoryRefreshTokenRepository implements RefreshTokenRepositoryInterface
@@ -24,6 +25,14 @@ final class InMemoryRefreshTokenRepository implements RefreshTokenRepositoryInte
         foreach ($refreshTokens as $refreshToken) {
             $this->refreshTokens[$refreshToken->getTokenHash()] = $refreshToken;
         }
+    }
+
+    public function findNotRevokedByUser(User $user): array
+    {
+        return array_values(array_filter(
+            $this->refreshTokens,
+            static fn (RefreshToken $token): bool => $token->getUser() === $user && null === $token->getRevokedAt(),
+        ));
     }
 
     /**

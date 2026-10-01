@@ -16,6 +16,7 @@ services:
       # playback and agent reach core. Synthesis is a pre-step of saving an
       # announcement config; if it is down, only that save fails.
       TTS_BASE_URL: http://host.docker.internal:8081
+      RABBITMQ_MANAGEMENT_URL: http://guest:guest@aeroflow_core_rabbitmq:15672
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
@@ -45,6 +46,7 @@ services:
       MESSENGER_PLAYBACK_EVENTS_DSN: amqp://guest:guest@aeroflow_core_rabbitmq:5672/%2f/playback_events
       MESSENGER_EMERGENCY_COMMANDS_DSN: amqp://guest:guest@aeroflow_core_rabbitmq:5672/%2f/emergency_commands
       TTS_BASE_URL: http://host.docker.internal:8081
+      RABBITMQ_MANAGEMENT_URL: http://guest:guest@aeroflow_core_rabbitmq:15672
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:

@@ -136,6 +136,16 @@ services:
     App\AudioCatalog\Domain\Repository\AudioFolderRepositoryInterface:
         alias: App\AudioCatalog\Infrastructure\Persistence\Doctrine\AudioFolderRepository
 
+    # System status (task 034): heartbeats, broker and service probes.
+    App\SystemStatus\Application\Port\HeartbeatStoreInterface:
+        alias: App\SystemStatus\Infrastructure\Persistence\DoctrineHeartbeatStore
+
+    App\SystemStatus\Application\Port\MessageBrokerProbeInterface:
+        alias: App\SystemStatus\Infrastructure\Integration\RabbitMqManagementProbe
+
+    App\SystemStatus\Application\Port\ServiceProbeInterface:
+        alias: App\SystemStatus\Infrastructure\Integration\ServiceProbe
+
     App\AudioCatalog\Application\Storage\AudioAssetStorageInterface:
         alias: App\AudioCatalog\Infrastructure\Storage\LocalAudioAssetStorage
 

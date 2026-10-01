@@ -7,6 +7,7 @@ namespace App\Tests\Unit\Announcements\Infrastructure\Integration\Playback;
 use App\Announcements\Application\Playback\EmergencyModeIntegrationEvent;
 use App\Announcements\Application\Playback\PlaybackIntegrationEvent;
 use App\Announcements\Infrastructure\Integration\Playback\PlaybackEventSerializer;
+use App\SystemStatus\Application\Heartbeat\PlaybackHeartbeatReceived;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\Exception\MessageDecodingFailedException;
@@ -167,5 +168,27 @@ final class PlaybackEventSerializerTest extends TestCase
         $this->expectException(MessageDecodingFailedException::class);
 
         new PlaybackEventSerializer()->decode(['body' => '{not json']);
+    }
+
+    public function testHeartbeatRoundTripsThroughRetries(): void
+    {
+        $serializer = new PlaybackEventSerializer();
+        $decoded = $serializer->decode(['body' => json_encode([
+            'event' => 'playback.heartbeat',
+            'messageId' => 'c0ffee00-0000-7000-8000-000000000001',
+            'occurredAt' => '2026-09-25T10:00:00+00:00',
+            'schemaVersion' => 1,
+            'transports' => ['announcement_playback', 'agent_events', 'scheduler'],
+            'pendingJobs' => 4,
+            'playingSince' => '2026-09-25T09:58:00+00:00',
+        ], JSON_THROW_ON_ERROR), 'headers' => []]);
+
+        $heartbeat = $decoded->getMessage();
+        self::assertInstanceOf(PlaybackHeartbeatReceived::class, $heartbeat);
+        self::assertSame(4, $heartbeat->pendingJobs);
+        self::assertSame(['announcement_playback', 'agent_events', 'scheduler'], $heartbeat->transports);
+
+        $again = $serializer->decode($serializer->encode($decoded))->getMessage();
+        self::assertEquals($heartbeat, $again);
     }
 }

@@ -6,6 +6,7 @@ namespace App\Announcements\Infrastructure\Integration\Playback;
 
 use App\Announcements\Application\Playback\EmergencyModeIntegrationEvent;
 use App\Announcements\Application\Playback\PlaybackIntegrationEvent;
+use App\SystemStatus\Application\Heartbeat\PlaybackHeartbeatReceived;
 use JsonException;
 use LogicException;
 use Symfony\Component\Messenger\Envelope;
@@ -20,9 +21,10 @@ use Symfony\Component\Messenger\Transport\Serialization\SerializerInterface;
  * ignoring the producer's `type` header. Mirrors AnnouncementPlaybackSerializer on
  * the playback side.
  *
- * Two families share the queue (task 026): the per-job announcement_playback.* facts
- * and the global emergency_mode.* reports, which carry no announcement or job at
- * all. The `event` prefix tells them apart.
+ * Three families share the queue: the per-job announcement_playback.* facts, the
+ * global emergency_mode.* reports (task 026) and the workers' playback.heartbeat
+ * (task 034, handled by the SystemStatus module). The last two carry no
+ * announcement or job at all; the `event` field tells them apart.
  */
 final class PlaybackEventSerializer implements SerializerInterface
 {
@@ -51,6 +53,9 @@ final class PlaybackEventSerializer implements SerializerInterface
         }
 
         $event = (string) ($data['event'] ?? '');
+        if (PlaybackHeartbeatReceived::EVENT === $event) {
+            return RetryCountHeader::restore(new Envelope($this->decodeHeartbeat($data)), $encodedEnvelope);
+        }
         if (str_starts_with($event, self::EMERGENCY_MODE_PREFIX)) {
             return RetryCountHeader::restore(new Envelope($this->decodeEmergencyMode($event, $data)), $encodedEnvelope);
         }
@@ -96,6 +101,25 @@ final class PlaybackEventSerializer implements SerializerInterface
     }
 
     /**
+     * @param array<string,mixed> $data
+     */
+    private function decodeHeartbeat(array $data): PlaybackHeartbeatReceived
+    {
+        if (!array_key_exists('messageId', $data) || !is_array($data['transports'] ?? null)) {
+            throw new MessageDecodingFailedException('Playback heartbeat is missing "messageId" or "transports".');
+        }
+
+        return new PlaybackHeartbeatReceived(
+            messageId: (string) $data['messageId'],
+            occurredAt: (string) ($data['occurredAt'] ?? ''),
+            schemaVersion: (int) ($data['schemaVersion'] ?? 1),
+            transports: array_values(array_map('strval', $data['transports'])),
+            pendingJobs: (int) ($data['pendingJobs'] ?? 0),
+            playingSince: isset($data['playingSince']) ? (string) $data['playingSince'] : null,
+        );
+    }
+
+    /**
      * Encoding happens when the retry listener re-sends a failed event to this
      * same transport; the body must round-trip through decode(). A throwing
      * encode() would kill the whole worker on the first handler failure.
@@ -103,6 +127,23 @@ final class PlaybackEventSerializer implements SerializerInterface
     public function encode(Envelope $envelope): array
     {
         $message = $envelope->getMessage();
+        if ($message instanceof PlaybackHeartbeatReceived) {
+            return [
+                'body' => json_encode([
+                    'event' => PlaybackHeartbeatReceived::EVENT,
+                    'messageId' => $message->messageId,
+                    'occurredAt' => $message->occurredAt,
+                    'schemaVersion' => $message->schemaVersion,
+                    'transports' => $message->transports,
+                    'pendingJobs' => $message->pendingJobs,
+                    'playingSince' => $message->playingSince,
+                ], JSON_THROW_ON_ERROR),
+                'headers' => RetryCountHeader::add($envelope, [
+                    'type' => PlaybackHeartbeatReceived::EVENT,
+                    'Content-Type' => 'application/json',
+                ]),
+            ];
+        }
         if ($message instanceof EmergencyModeIntegrationEvent) {
             return [
                 'body' => json_encode([

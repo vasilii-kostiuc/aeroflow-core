@@ -9,6 +9,8 @@
 parameters:
     user_access.refresh_token_ttl: '+30 days'
     audio_catalog.storage_directory: '%kernel.project_dir%/var/audio-assets'
+    # Outbox relay (task 035): emergency control commands are delivered first.
+    app.outbox.first_destination: 'emergency_commands'
     localization.languages:
         -
             code: 'ro-MD'
@@ -119,7 +121,18 @@ services:
         alias: App\Announcements\Infrastructure\Integration\FlightOperations\FlightOperationsOperationalResourceLookup
 
     App\Announcements\Application\Playback\PlaybackRequestPublisherInterface:
-        alias: App\Announcements\Infrastructure\Integration\Playback\MessengerPlaybackRequestPublisher
+        alias: App\Announcements\Infrastructure\Integration\Playback\OutboxPlaybackRequestPublisher
+
+    # Outbox relay (task 035): one AMQP DSN per outbox destination — the same
+    # exchanges and queues the Messenger transports used before the outbox.
+    App\Shared\Infrastructure\Outbox\OutboxSender:
+        alias: App\Shared\Infrastructure\Outbox\AmqpOutboxSender
+
+    App\Shared\Infrastructure\Outbox\AmqpOutboxSender:
+        arguments:
+            $dsns:
+                announcement_playback: '%env(MESSENGER_TRANSPORT_DSN)%'
+                emergency_commands: '%env(MESSENGER_EMERGENCY_COMMANDS_DSN)%'
 
     App\Announcements\Application\Playback\PlaybackEventReceiptRecorderInterface:
         alias: App\Announcements\Infrastructure\Integration\Playback\DoctrinePlaybackEventReceiptRecorder

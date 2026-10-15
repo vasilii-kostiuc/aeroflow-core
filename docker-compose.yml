@@ -57,6 +57,32 @@ services:
     networks:
       - aeroflow
 
+  # Delivers the outbox (task 035): commands to aeroflow-playback written in the
+  # same transaction as the dispatcher's action. Exactly one instance — order
+  # within a queue relies on a single sender.
+  aeroflow_core_outbox_relay:
+    build:
+      context: .
+      dockerfile: _docker/Dockerfile
+    container_name: aeroflow_core_outbox_relay
+    command: php bin/console app:outbox:relay -v
+    restart: unless-stopped
+    volumes:
+      - .:/var/www
+    environment:
+      APP_ENV: dev
+      DATABASE_URL: postgresql://aeroflow:aeroflow@aeroflow_core_postgres:5432/aeroflow?serverVersion=16&charset=utf8
+      MESSENGER_TRANSPORT_DSN: amqp://guest:guest@aeroflow_core_rabbitmq:5672/%2f/announcement_playback
+      MESSENGER_PLAYBACK_EVENTS_DSN: amqp://guest:guest@aeroflow_core_rabbitmq:5672/%2f/playback_events
+      MESSENGER_EMERGENCY_COMMANDS_DSN: amqp://guest:guest@aeroflow_core_rabbitmq:5672/%2f/emergency_commands
+    depends_on:
+      aeroflow_core_postgres:
+        condition: service_healthy
+      aeroflow_core_rabbitmq:
+        condition: service_healthy
+    networks:
+      - aeroflow
+
   aeroflow_core_nginx:
     image: nginx:1.27-alpine
     container_name: aeroflow_core_nginx

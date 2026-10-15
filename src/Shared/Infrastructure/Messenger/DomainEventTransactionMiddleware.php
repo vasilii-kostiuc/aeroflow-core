@@ -12,12 +12,12 @@ use Throwable;
 
 /**
  * Opens a domain-event scope around each command bus message and releases the
- * buffered events only after the message (and its Doctrine transaction) has been
- * handled successfully. On failure the buffered events are discarded together
- * with the rolled-back transaction.
+ * buffered events once the message has been handled successfully; on failure they
+ * are discarded.
  *
- * Must be registered before `doctrine_transaction` in the command bus middleware
- * list so that its post-handling (commit) runs after the transaction commits.
+ * Must be registered after `doctrine_transaction` in the command bus middleware
+ * list (task 035): the events are then handled inside the transaction, so the
+ * outbox rows their handlers write commit atomically with the use case.
  */
 final readonly class DomainEventTransactionMiddleware implements MiddlewareInterface
 {

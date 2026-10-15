@@ -7,30 +7,27 @@ framework:
 
         buses:
             command.bus:
-                # Order matters: the domain-event middleware wraps doctrine_transaction
-                # so buffered events are released only after the transaction commits.
+                # Order matters: doctrine_transaction wraps the domain-event middleware,
+                # so buffered domain events are handled after the use case but before
+                # the commit (task 035). Their handlers write outbound integration
+                # messages into the outbox, which therefore commits atomically with
+                # the state change — or rolls back with it.
                 middleware:
-                    # Buffer domain events and publish them after the commit (discard on rollback).
-                    - App\Shared\Infrastructure\Messenger\DomainEventTransactionMiddleware
                     # Wrap every command handler in a single Doctrine transaction so a
                     # use case touching more than one aggregate (e.g. advancing a
                     # FlightOccurrence and creating its Announcement) commits atomically.
                     - doctrine_transaction
+                    # Buffer domain events and handle them once the use case is done,
+                    # inside the transaction (discard on failure).
+                    - App\Shared\Infrastructure\Messenger\DomainEventTransactionMiddleware
             event.bus:
-                default_middleware: allow_no_handlers
-            # Outbound integration commands to other services. No doctrine_transaction:
-            # they are published after the local transaction has already committed, so
-            # sending must not open a new transaction or depend on the database.
-            integration.bus:
                 default_middleware: allow_no_handlers
 
         transports:
             # https://symfony.com/doc/current/messenger.html#transport-configuration
-            # Outbound integration commands to aeroflow-playback travel over RabbitMQ.
-            # JSON-serialized so the consuming service is not coupled to Core's classes.
-            async:
-                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
-                serializer: messenger.transport.symfony_serializer
+            # Outbound commands to aeroflow-playback do not go through Messenger: they
+            # are written into the outbox and delivered by `app:outbox:relay` (task 035).
+            #
             # Inbound integration events from aeroflow-playback (queued / started /
             # completed). The custom serializer rebuilds the message from the JSON
             # body discriminated by the `event` field, so core is not coupled to
@@ -41,30 +38,11 @@ framework:
                 retry_strategy:
                     max_retries: 3
                     delay: 1000
-            # Control-plane commands that must never queue behind the bulk of
-            # ordinary playback requests: emergency mode activation/deactivation
-            # (ADR 002, level 2 — its own queue, its own DSN).
-            emergency_commands:
-                dsn: '%env(MESSENGER_EMERGENCY_COMMANDS_DSN)%'
-                serializer: messenger.transport.symfony_serializer
             # failed: 'doctrine://default?queue_name=failed'
             sync: 'sync://'
-
-        routing:
-            # Core publishes these to aeroflow-playback after the local transaction commits.
-            App\Announcements\Application\Playback\RequestAnnouncementPlayback: async
-            App\Announcements\Application\Playback\CancelAnnouncementPlayback: async
-            App\Announcements\Application\Playback\StopAnnouncementPlayback: async
-            App\Announcements\Application\Playback\StopAnnouncementRepeat: async
-            App\Announcements\Application\Playback\ActivateEmergencyMode: emergency_commands
-            App\Announcements\Application\Playback\DeactivateEmergencyMode: emergency_commands
 
 when@test:
     framework:
         messenger:
             transports:
-                # Keep the outbound transport in-memory in tests so publishing can be
-                # asserted without a running RabbitMQ.
-                async: 'in-memory://'
-                emergency_commands: 'in-memory://'
                 playback_events: 'in-memory://'

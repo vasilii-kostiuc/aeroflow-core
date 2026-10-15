@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional\Announcements\Api;
 
 use App\Tests\Support\ActsAsUser;
+use Doctrine\DBAL\Connection;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -37,6 +38,13 @@ final class AnnouncementApiTest extends WebTestCase
         $announcement = $this->response($client)['data'];
         self::assertSame($occurrenceId, $announcement['flightOccurrenceId']);
         self::assertSame($flightId, $announcement['flightDefinitionId']);
+
+        // The playback request is in the outbox, committed with the action (task 035).
+        $destination = static::getContainer()->get(Connection::class)->fetchOne(
+            'SELECT destination FROM outbox_message WHERE body LIKE :id',
+            ['id' => '%"announcementId":"'.$data['announcementId'].'"%'],
+        );
+        self::assertSame('announcement_playback', $destination);
     }
 
     public function testBoardingActionResolvesGateSlotThroughOccurrenceLifecycle(): void

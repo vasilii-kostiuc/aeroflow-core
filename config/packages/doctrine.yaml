@@ -7,6 +7,9 @@ doctrine:
         #server_version: '16'
 
         profiling_collect_backtrace: '%kernel.debug%'
+        # The outbox (task 035) is plain DBAL, not an entity: keep schema diffs from
+        # proposing to drop it.
+        schema_filter: ~^(?!outbox_message$)~
     orm:
         validate_xml_mapping: true
         naming_strategy: doctrine.orm.naming_strategy.underscore

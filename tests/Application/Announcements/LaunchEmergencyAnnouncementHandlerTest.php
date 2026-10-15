@@ -8,8 +8,6 @@ use App\Announcements\Application\EventHandler\PublishEmergencyModeActivation;
 use App\Announcements\Application\LaunchEmergencyAnnouncement\LaunchEmergencyAnnouncementCommand;
 use App\Announcements\Application\LaunchEmergencyAnnouncement\LaunchEmergencyAnnouncementHandler;
 use App\Announcements\Application\Playback\ActivateEmergencyMode;
-use App\Announcements\Application\Playback\DeactivateEmergencyMode;
-use App\Announcements\Application\Playback\EmergencyModePublisherInterface;
 use App\Announcements\Application\Port\AudioCatalog\AudioPromptLookupInterface;
 use App\Announcements\Domain\Entity\Announcement;
 use App\Announcements\Domain\Entity\EmergencyAnnouncementTemplate;
@@ -23,6 +21,7 @@ use App\Announcements\Domain\Repository\AnnouncementRepositoryInterface;
 use App\Announcements\Domain\Repository\EmergencyAnnouncementTemplateRepositoryInterface;
 use App\Shared\Application\Uuid\UuidParser;
 use App\Tests\Support\RecordingEventPublisher;
+use App\Tests\Support\RecordingPlaybackCommandPublisher;
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
@@ -144,7 +143,7 @@ final class LaunchEmergencyAnnouncementHandlerTest extends TestCase
 
     public function testEmergencyCreationAlsoActivatesTheMode(): void
     {
-        $publisher = new RecordingEmergencyModePublisher();
+        $publisher = new RecordingPlaybackCommandPublisher();
         $announcementId = Uuid::v7()->toRfc4122();
 
         new PublishEmergencyModeActivation($publisher)(new AnnouncementCreated(
@@ -155,15 +154,17 @@ final class LaunchEmergencyAnnouncementHandlerTest extends TestCase
             new DateTimeImmutable('2026-09-23T10:00:00+00:00'),
         ));
 
-        self::assertCount(1, $publisher->activated);
-        self::assertSame('emergency_mode.activate', $publisher->activated[0]->command);
-        self::assertSame($announcementId, $publisher->activated[0]->correlationId);
-        self::assertSame('2026-09-23T10:00:00+00:00', $publisher->activated[0]->occurredAt);
+        self::assertCount(1, $publisher->commands);
+        $message = $publisher->commands[0];
+        self::assertInstanceOf(ActivateEmergencyMode::class, $message);
+        self::assertSame('emergency_mode.activate', $message->command);
+        self::assertSame($announcementId, $message->correlationId);
+        self::assertSame('2026-09-23T10:00:00+00:00', $message->occurredAt);
     }
 
     public function testOrdinaryAnnouncementDoesNotActivateTheMode(): void
     {
-        $publisher = new RecordingEmergencyModePublisher();
+        $publisher = new RecordingPlaybackCommandPublisher();
 
         foreach ([AnnouncementType::Supplementary, AnnouncementType::CheckInOpening] as $type) {
             new PublishEmergencyModeActivation($publisher)(new AnnouncementCreated(
@@ -175,7 +176,7 @@ final class LaunchEmergencyAnnouncementHandlerTest extends TestCase
             ));
         }
 
-        self::assertSame([], $publisher->activated);
+        self::assertSame([], $publisher->commands);
     }
 }
 
@@ -240,24 +241,5 @@ final class EmergencyAssetsActiveLookup implements AudioPromptLookupInterface
     public function isActiveAsset(string $audioAssetId): bool
     {
         return $this->active;
-    }
-}
-
-final class RecordingEmergencyModePublisher implements EmergencyModePublisherInterface
-{
-    /** @var list<ActivateEmergencyMode> */
-    public array $activated = [];
-
-    /** @var list<DeactivateEmergencyMode> */
-    public array $deactivated = [];
-
-    public function publishActivate(ActivateEmergencyMode $message): void
-    {
-        $this->activated[] = $message;
-    }
-
-    public function publishDeactivate(DeactivateEmergencyMode $message): void
-    {
-        $this->deactivated[] = $message;
     }
 }

@@ -18,7 +18,7 @@ use Symfony\Component\Uid\Uuid;
  * and the correlation is the operator action itself (messageId). Travels over the
  * dedicated emergency_commands transport (ADR 002, level 2).
  */
-final readonly class DeactivateEmergencyMode
+final readonly class DeactivateEmergencyMode implements PlaybackCommand
 {
     public const string COMMAND = 'emergency_mode.deactivate';
 

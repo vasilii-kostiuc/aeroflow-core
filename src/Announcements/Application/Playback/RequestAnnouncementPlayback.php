@@ -12,7 +12,7 @@ namespace App\Announcements\Application\Playback;
  * and scalars, never aggregates, templates, prompts, gates or counters. Playback
  * turns it into a PlaybackJob and never learns about flights.
  */
-final readonly class RequestAnnouncementPlayback
+final readonly class RequestAnnouncementPlayback implements PlaybackCommand
 {
     /**
      * Body-level discriminator (ADR 002): the announcement_playback queue now

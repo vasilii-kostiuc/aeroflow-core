@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Announcements\Application\DeactivateEmergency;
 
 use App\Announcements\Application\Playback\DeactivateEmergencyMode;
-use App\Announcements\Application\Playback\EmergencyModePublisherInterface;
+use App\Announcements\Application\Playback\PlaybackCommandPublisherInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
@@ -17,12 +17,12 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 #[AsMessageHandler(bus: 'command.bus')]
 final readonly class DeactivateEmergencyHandler
 {
-    public function __construct(private EmergencyModePublisherInterface $publisher)
+    public function __construct(private PlaybackCommandPublisherInterface $publisher)
     {
     }
 
     public function __invoke(DeactivateEmergencyCommand $command): void
     {
-        $this->publisher->publishDeactivate(DeactivateEmergencyMode::now());
+        $this->publisher->publish(DeactivateEmergencyMode::now());
     }
 }

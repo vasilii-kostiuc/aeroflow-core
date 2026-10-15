@@ -9,7 +9,7 @@ use DateTimeInterface;
 use Symfony\Component\Uid\Uuid;
 
 /** Neutral operator command: stop the Playback job, without mutating Announcement. */
-final readonly class StopAnnouncementPlayback
+final readonly class StopAnnouncementPlayback implements PlaybackCommand
 {
     /** Body-level discriminator (ADR 002), mirrors RequestAnnouncementPlayback. */
     public const string COMMAND = 'announcement_playback.stop';

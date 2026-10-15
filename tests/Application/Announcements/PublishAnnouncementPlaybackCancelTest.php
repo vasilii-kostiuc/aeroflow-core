@@ -6,10 +6,8 @@ namespace App\Tests\Application\Announcements;
 
 use App\Announcements\Application\EventHandler\PublishAnnouncementPlaybackCancel;
 use App\Announcements\Application\Playback\CancelAnnouncementPlayback;
-use App\Announcements\Application\Playback\PlaybackRequestPublisherInterface;
-use App\Announcements\Application\Playback\StopAnnouncementPlayback;
-use App\Announcements\Application\Playback\RequestAnnouncementPlayback;
 use App\Announcements\Domain\Event\AnnouncementCancelled;
+use App\Tests\Support\RecordingPlaybackCommandPublisher;
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
@@ -20,7 +18,7 @@ final class PublishAnnouncementPlaybackCancelTest extends TestCase
     {
         $announcementId = Uuid::v7()->toRfc4122();
 
-        $publisher = new RecordingCancelPublisher();
+        $publisher = new RecordingPlaybackCommandPublisher();
         $handler = new PublishAnnouncementPlaybackCancel($publisher);
 
         $handler(new AnnouncementCancelled(
@@ -28,8 +26,9 @@ final class PublishAnnouncementPlaybackCancelTest extends TestCase
             new DateTimeImmutable('2026-07-17T10:00:00+00:00'),
         ));
 
-        self::assertCount(1, $publisher->cancels);
-        $message = $publisher->cancels[0];
+        self::assertCount(1, $publisher->commands);
+        $message = $publisher->commands[0];
+        self::assertInstanceOf(CancelAnnouncementPlayback::class, $message);
 
         self::assertTrue(Uuid::isValid($message->messageId));
         self::assertSame($announcementId, $message->correlationId);
@@ -37,28 +36,5 @@ final class PublishAnnouncementPlaybackCancelTest extends TestCase
         self::assertSame('2026-07-17T10:00:00+00:00', $message->occurredAt);
         self::assertSame('announcement_playback.cancel', $message->command);
         self::assertSame(1, $message->schemaVersion);
-    }
-}
-
-final class RecordingCancelPublisher implements PlaybackRequestPublisherInterface
-{
-    /** @var list<CancelAnnouncementPlayback> */
-    public array $cancels = [];
-
-    public function publish(RequestAnnouncementPlayback $message): void
-    {
-    }
-
-    public function publishCancel(CancelAnnouncementPlayback $message): void
-    {
-        $this->cancels[] = $message;
-    }
-
-    public function publishStopRepeat(\App\Announcements\Application\Playback\StopAnnouncementRepeat $message): void
-    {
-    }
-
-    public function publishStop(StopAnnouncementPlayback $message): void
-    {
     }
 }

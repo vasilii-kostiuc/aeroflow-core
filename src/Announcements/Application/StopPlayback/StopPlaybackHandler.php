@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Announcements\Application\StopPlayback;
 
-use App\Announcements\Application\Playback\PlaybackRequestPublisherInterface;
+use App\Announcements\Application\Playback\PlaybackCommandPublisherInterface;
 use App\Announcements\Application\Playback\StopAnnouncementPlayback;
 use App\Shared\Application\Uuid\UuidParser;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -13,7 +13,7 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 #[AsMessageHandler(bus: 'command.bus')]
 final readonly class StopPlaybackHandler
 {
-    public function __construct(private PlaybackRequestPublisherInterface $publisher, private UuidParser $uuidParser)
+    public function __construct(private PlaybackCommandPublisherInterface $publisher, private UuidParser $uuidParser)
     {
     }
 
@@ -23,6 +23,6 @@ final readonly class StopPlaybackHandler
         // boundary and playback would turn it into a poison message.
         $announcementId = $this->uuidParser->parse($command->announcementId)->toRfc4122();
 
-        $this->publisher->publishStop(StopAnnouncementPlayback::forAnnouncement($announcementId));
+        $this->publisher->publish(StopAnnouncementPlayback::forAnnouncement($announcementId));
     }
 }

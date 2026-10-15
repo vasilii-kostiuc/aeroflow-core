@@ -18,7 +18,7 @@ use Symfony\Component\Uid\Uuid;
  * emergency_commands transport (ADR 002, level 2) so it never waits behind the bulk
  * queue of ordinary playback requests.
  */
-final readonly class ActivateEmergencyMode
+final readonly class ActivateEmergencyMode implements PlaybackCommand
 {
     public const string COMMAND = 'emergency_mode.activate';
 

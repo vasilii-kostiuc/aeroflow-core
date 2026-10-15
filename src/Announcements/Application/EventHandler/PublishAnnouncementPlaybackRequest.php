@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Announcements\Application\EventHandler;
 
-use App\Announcements\Application\Playback\PlaybackRequestPublisherInterface;
+use App\Announcements\Application\Playback\PlaybackCommandPublisherInterface;
 use App\Announcements\Application\Playback\RequestAnnouncementPlayback;
 use App\Announcements\Domain\Event\AnnouncementCreated;
 use App\Announcements\Domain\Repository\AnnouncementRepositoryInterface;
@@ -26,7 +26,7 @@ final readonly class PublishAnnouncementPlaybackRequest
 {
     public function __construct(
         private AnnouncementRepositoryInterface $announcements,
-        private PlaybackRequestPublisherInterface $publisher,
+        private PlaybackCommandPublisherInterface $publisher,
     ) {
     }
 

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Announcements\Application\EventHandler;
 
 use App\Announcements\Application\Playback\CancelAnnouncementPlayback;
-use App\Announcements\Application\Playback\PlaybackRequestPublisherInterface;
+use App\Announcements\Application\Playback\PlaybackCommandPublisherInterface;
 use App\Announcements\Domain\Event\AnnouncementCancelled;
 use DateTimeInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -24,13 +24,13 @@ use Symfony\Component\Uid\Uuid;
 final readonly class PublishAnnouncementPlaybackCancel
 {
     public function __construct(
-        private PlaybackRequestPublisherInterface $publisher,
+        private PlaybackCommandPublisherInterface $publisher,
     ) {
     }
 
     public function __invoke(AnnouncementCancelled $event): void
     {
-        $this->publisher->publishCancel(new CancelAnnouncementPlayback(
+        $this->publisher->publish(new CancelAnnouncementPlayback(
             messageId: Uuid::v7()->toRfc4122(),
             correlationId: $event->announcementId,
             announcementId: $event->announcementId,

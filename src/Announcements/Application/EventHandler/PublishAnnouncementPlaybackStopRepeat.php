@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Announcements\Application\EventHandler;
 
-use App\Announcements\Application\Playback\PlaybackRequestPublisherInterface;
+use App\Announcements\Application\Playback\PlaybackCommandPublisherInterface;
 use App\Announcements\Application\Playback\StopAnnouncementRepeat;
 use App\Announcements\Domain\Event\AnnouncementRepeatEnded;
 use DateTimeInterface;
@@ -24,13 +24,13 @@ use Symfony\Component\Uid\Uuid;
 final readonly class PublishAnnouncementPlaybackStopRepeat
 {
     public function __construct(
-        private PlaybackRequestPublisherInterface $publisher,
+        private PlaybackCommandPublisherInterface $publisher,
     ) {
     }
 
     public function __invoke(AnnouncementRepeatEnded $event): void
     {
-        $this->publisher->publishStopRepeat(new StopAnnouncementRepeat(
+        $this->publisher->publish(new StopAnnouncementRepeat(
             messageId: Uuid::v7()->toRfc4122(),
             correlationId: $event->announcementId,
             announcementId: $event->announcementId,

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Announcements\Application\EventHandler;
 
 use App\Announcements\Application\Playback\ActivateEmergencyMode;
-use App\Announcements\Application\Playback\EmergencyModePublisherInterface;
+use App\Announcements\Application\Playback\PlaybackCommandPublisherInterface;
 use App\Announcements\Domain\Enum\AnnouncementType;
 use App\Announcements\Domain\Event\AnnouncementCreated;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -24,7 +24,7 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 #[AsMessageHandler(bus: 'event.bus')]
 final readonly class PublishEmergencyModeActivation
 {
-    public function __construct(private EmergencyModePublisherInterface $publisher)
+    public function __construct(private PlaybackCommandPublisherInterface $publisher)
     {
     }
 
@@ -34,7 +34,7 @@ final readonly class PublishEmergencyModeActivation
             return;
         }
 
-        $this->publisher->publishActivate(
+        $this->publisher->publish(
             ActivateEmergencyMode::correlatedWith($event->announcementId, $event->occurredAt),
         );
     }

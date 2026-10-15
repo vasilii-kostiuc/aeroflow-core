@@ -120,8 +120,8 @@ services:
     App\Announcements\Application\Port\FlightOperations\OperationalResourceLookupInterface:
         alias: App\Announcements\Infrastructure\Integration\FlightOperations\FlightOperationsOperationalResourceLookup
 
-    App\Announcements\Application\Playback\PlaybackRequestPublisherInterface:
-        alias: App\Announcements\Infrastructure\Integration\Playback\OutboxPlaybackRequestPublisher
+    App\Announcements\Application\Playback\PlaybackCommandPublisherInterface:
+        alias: App\Announcements\Infrastructure\Integration\Playback\OutboxPlaybackCommandPublisher
 
     # Outbox relay (task 035): one AMQP DSN per outbox destination — the same
     # exchanges and queues the Messenger transports used before the outbox.

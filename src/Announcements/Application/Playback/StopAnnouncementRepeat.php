@@ -11,7 +11,7 @@ namespace App\Announcements\Application\Playback;
  * playback stops cycling the job. Carries identifiers and time only, like the cancel
  * and stop commands; discriminated in the body by `command` (ADR 002).
  */
-final readonly class StopAnnouncementRepeat
+final readonly class StopAnnouncementRepeat implements PlaybackCommand
 {
     public const string COMMAND = 'announcement_playback.stop_repeat';
 

@@ -4,14 +4,12 @@ declare(strict_types=1);
 
 namespace App\Tests\Application\Announcements;
 
-use App\Announcements\Application\Playback\CancelAnnouncementPlayback;
-use App\Announcements\Application\Playback\PlaybackRequestPublisherInterface;
-use App\Announcements\Application\Playback\RequestAnnouncementPlayback;
 use App\Announcements\Application\Playback\StopAnnouncementPlayback;
 use App\Announcements\Application\StopPlayback\StopPlaybackCommand;
 use App\Announcements\Application\StopPlayback\StopPlaybackHandler;
 use App\Shared\Application\Uuid\Exception\InvalidUuidException;
 use App\Shared\Application\Uuid\UuidParser;
+use App\Tests\Support\RecordingPlaybackCommandPublisher;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
@@ -20,12 +18,13 @@ final class StopPlaybackHandlerTest extends TestCase
     public function testPublishesNeutralStopCommand(): void
     {
         $announcementId = Uuid::v7()->toRfc4122();
-        $publisher = new RecordingStopPublisher();
+        $publisher = new RecordingPlaybackCommandPublisher();
 
         (new StopPlaybackHandler($publisher, new UuidParser()))(new StopPlaybackCommand($announcementId));
 
-        self::assertCount(1, $publisher->stops);
-        $message = $publisher->stops[0];
+        self::assertCount(1, $publisher->commands);
+        $message = $publisher->commands[0];
+        self::assertInstanceOf(StopAnnouncementPlayback::class, $message);
 
         self::assertTrue(Uuid::isValid($message->messageId));
         self::assertSame($announcementId, $message->correlationId);
@@ -39,7 +38,7 @@ final class StopPlaybackHandlerTest extends TestCase
 
     public function testRejectsMalformedAnnouncementIdBeforePublishing(): void
     {
-        $publisher = new RecordingStopPublisher();
+        $publisher = new RecordingPlaybackCommandPublisher();
         $handler = new StopPlaybackHandler($publisher, new UuidParser());
 
         try {
@@ -48,29 +47,6 @@ final class StopPlaybackHandlerTest extends TestCase
         } catch (InvalidUuidException) {
         }
 
-        self::assertSame([], $publisher->stops);
-    }
-}
-
-final class RecordingStopPublisher implements PlaybackRequestPublisherInterface
-{
-    /** @var list<StopAnnouncementPlayback> */
-    public array $stops = [];
-
-    public function publish(RequestAnnouncementPlayback $message): void
-    {
-    }
-
-    public function publishCancel(CancelAnnouncementPlayback $message): void
-    {
-    }
-
-    public function publishStop(StopAnnouncementPlayback $message): void
-    {
-        $this->stops[] = $message;
-    }
-
-    public function publishStopRepeat(\App\Announcements\Application\Playback\StopAnnouncementRepeat $message): void
-    {
+        self::assertSame([], $publisher->commands);
     }
 }

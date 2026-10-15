@@ -13,7 +13,7 @@ namespace App\Announcements\Application\Playback;
  * cancelling only removes a waiting job; stopping the current sound is a separate
  * future command. The contract is neutral: identifiers and time only.
  */
-final readonly class CancelAnnouncementPlayback
+final readonly class CancelAnnouncementPlayback implements PlaybackCommand
 {
     /** Body-level discriminator (ADR 002), mirrors RequestAnnouncementPlayback. */
     public const string COMMAND = 'announcement_playback.cancel';
